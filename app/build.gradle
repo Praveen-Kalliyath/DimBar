@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.code2consciousness.dimsum'
+    namespace 'com.code2consciousness.dimbar'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.code2consciousness.dimsum"
+        applicationId "com.code2consciousness.dimbar"
         minSdk 29
         targetSdk 36
         versionCode 1

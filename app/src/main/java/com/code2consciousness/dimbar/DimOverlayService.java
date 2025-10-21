@@ -1,4 +1,4 @@
-package com.code2consciousness.dimsum;
+package com.code2consciousness.dimbar;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -10,7 +10,6 @@ import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -29,7 +28,7 @@ public class DimOverlayService extends Service {
     private Notification createNotification() {
         String channelId = "dim_overlay_channel";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId, "Screen Dimmer", NotificationManager.IMPORTANCE_MIN);
+            NotificationChannel channel = new NotificationChannel(channelId, "DimBar", NotificationManager.IMPORTANCE_MIN);
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);

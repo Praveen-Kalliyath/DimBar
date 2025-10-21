@@ -1,4 +1,4 @@
-package com.code2consciousness.dimsum;
+package com.code2consciousness.dimbar;
 
 import org.junit.Test;
 

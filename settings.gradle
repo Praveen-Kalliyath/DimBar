@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DimSum"
+rootProject.name = "DimBar"
 include ':app'

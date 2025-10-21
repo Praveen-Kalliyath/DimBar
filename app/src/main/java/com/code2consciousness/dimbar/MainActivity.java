@@ -1,4 +1,4 @@
-package com.code2consciousness.dimsum;
+package com.code2consciousness.dimbar;
 
 import android.content.Intent;
 import android.graphics.Color;
