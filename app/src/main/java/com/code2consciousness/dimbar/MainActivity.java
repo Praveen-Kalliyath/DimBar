@@ -1,9 +1,10 @@
 package com.code2consciousness.dimbar;
 
 import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.GradientDrawable;
@@ -18,18 +19,25 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_OVERLAY_PERMISSION = 1234;
     private SeekBar seekBar;
     private ImageButton stopButton;
+    private ImageButton pauseButton;
+    private BroadcastReceiver closeReceiver;
+    private boolean isPaused = false;
+    private float lastDim = 0.5f;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         // Transparent activity
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -60,7 +68,8 @@ public class MainActivity extends AppCompatActivity {
         seekBar = new SeekBar(this);
         seekBar.setMax(100);
         seekBar.setProgress(50);
-        seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
+        // keep your custom SeekBar drawable if present
+        // seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
         seekBar.getThumb().setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(
                 600,
@@ -68,11 +77,21 @@ public class MainActivity extends AppCompatActivity {
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
 
+        // Pause button
+        pauseButton = new ImageButton(this);
+        pauseButton.setImageResource(android.R.drawable.ic_media_pause);
+        pauseButton.setBackgroundColor(Color.TRANSPARENT);
+        pauseButton.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
+        LinearLayout.LayoutParams pauseParams = new LinearLayout.LayoutParams(30, 160);
+        pauseParams.gravity = Gravity.CENTER_VERTICAL;
+        pauseParams.leftMargin = 16;
+        pauseButton.setLayoutParams(pauseParams);
+
         // Stop button
         stopButton = new ImageButton(this);
         stopButton.setImageResource(android.R.drawable.ic_lock_power_off);
         stopButton.setBackgroundColor(Color.TRANSPARENT);
-        stopButton.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
+        stopButton.setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
         stopButton.setScaleX(1.5f);
         stopButton.setScaleY(1.5f);
         stopButton.setPadding(0, 0, 0, 0);
@@ -82,7 +101,9 @@ public class MainActivity extends AppCompatActivity {
         btnParams.leftMargin = 32;
         stopButton.setLayoutParams(btnParams);
 
+        // Add views to layout
         innerLayout.addView(seekBar);
+        innerLayout.addView(pauseButton);
         innerLayout.addView(stopButton);
 
         LinearLayout outerLayout = new LinearLayout(this);
@@ -96,27 +117,36 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(outerLayout);
 
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 2000);
-            }
-        }
-
         // SeekBar listener
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                float dimAmount = (100 - progress) / 100f;
-                updateOverlay(dimAmount);
+                if (!isPaused) {
+                    float dimAmount = (100 - progress) / 100f;
+                    lastDim = dimAmount;
+                    updateOverlay(dimAmount);
+                }
             }
-
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        // Stop button
+        // Pause button listener
+        pauseButton.setOnClickListener(v -> {
+            if (isPaused) {
+                // Resume
+                isPaused = false;
+                pauseButton.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
+                updateOverlay(lastDim);
+            } else {
+                // Pause
+                isPaused = true;
+                pauseButton.setColorFilter(Color.GRAY, PorterDuff.Mode.SRC_IN);
+                updateOverlay(0f);
+            }
+        });
+
+        // Stop button listener
         stopButton.setOnClickListener(v -> stopOverlay());
 
         // Request overlay permission if needed
@@ -125,6 +155,16 @@ public class MainActivity extends AppCompatActivity {
         } else {
             updateOverlay(seekBar.getProgress() / 100f);
         }
+
+        // Register BroadcastReceiver to close app
+        closeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                finish();
+            }
+        };
+        LocalBroadcastManager.getInstance(this).registerReceiver(closeReceiver,
+                new IntentFilter("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
     }
 
     private void requestOverlayPermission() {
@@ -132,18 +172,6 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + getPackageName()));
         startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_OVERLAY_PERMISSION) {
-            if (Settings.canDrawOverlays(this)) {
-                updateOverlay(seekBar.getProgress() / 100f);
-            } else {
-                Toast.makeText(this, "Overlay permission not granted!", Toast.LENGTH_SHORT).show();
-            }
-        }
     }
 
     private void updateOverlay(float dimAmount) {
@@ -164,8 +192,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopOverlay() {
         Intent intent = new Intent(this, DimOverlayService.class);
-        intent.setAction("STOP");
+        intent.setAction("CLOSE");
         startService(intent);
+        finish(); // close MainActivity
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
@@ -176,5 +205,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (closeReceiver != null) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(closeReceiver);
+        }
     }
 }

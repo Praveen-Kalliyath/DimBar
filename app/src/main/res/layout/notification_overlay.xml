@@ -17,7 +17,7 @@
 
     <Button
         android:id="@+id/btn_stop"
-        android:text="Stop"
+        android:text="Close"
         android:textColor="#FFFFFF"
         android:background="@android:color/holo_red_light"
         android:layout_marginStart="16dp"

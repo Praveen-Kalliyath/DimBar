@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
@@ -13,9 +14,9 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
-import android.widget.RemoteViews;
 
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class DimOverlayService extends Service {
 
@@ -37,28 +38,37 @@ public class DimOverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
-        // Handle actions from notification
+        // Handle notification button actions
         if (intent != null && intent.getAction() != null) {
             switch (intent.getAction()) {
-                case "STOP":
+                case "CLOSE":
+                    removeOverlay();
                     stopSelf();
+                    // Close MainActivity if open
+                    LocalBroadcastManager.getInstance(this)
+                            .sendBroadcast(new Intent("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
                     return START_NOT_STICKY;
+
                 case "PAUSE":
                     updateDim(0f);
                     return START_STICKY;
-                case "RESUME":
-                    updateDim(currentDim);
+
+                case "UPDATE_DIM":
+                    float dimAmount = intent.getFloatExtra("dim_amount", currentDim);
+                    updateDim(dimAmount);
                     return START_STICKY;
             }
         }
 
+        // Start as foreground service
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else {
+            startForeground(1, createNotification());
+        }
+
         float dimAmount = (intent != null) ? intent.getFloatExtra("dim_amount", 0.5f) : 0.5f;
         currentDim = dimAmount;
-
-        // Start foreground notification
-        startForeground(1, createNotification());
-
         showOverlay(dimAmount);
 
         return START_STICKY;
@@ -88,31 +98,33 @@ public class DimOverlayService extends Service {
         openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openAppPending = PendingIntent.getActivity(this, 0, openAppIntent, flags);
 
-        // Action buttons
-        PendingIntent pausePending = PendingIntent.getService(this, 1,
+        // Pause button
+        PendingIntent pausePending = PendingIntent.getService(
+                this, 1,
                 new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
 
-        PendingIntent stopPending = PendingIntent.getService(this, 2,
-                new Intent(this, DimOverlayService.class).setAction("STOP"), flags);
+        // Stop button
+        PendingIntent stopPending = PendingIntent.getService(
+                this, 2,
+                new Intent(this, DimOverlayService.class).setAction("CLOSE"), flags);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
                 .setContentTitle("DimBar Active")
-                .setContentText("Tap to adjust or close dimming.")
-                .setContentIntent(openAppPending) // opens app
+                .setContentText("Tap to open DimBar controls")
+                .setContentIntent(openAppPending)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .addAction(android.R.drawable.ic_media_pause, "Pause", pausePending)
-                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPending)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", stopPending)
                 .build();
     }
 
-
-
     private void showOverlay(float dimAmount) {
-        if (windowManager == null) windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        if (windowManager == null) {
+            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        }
         if (overlayView != null) windowManager.removeView(overlayView);
 
         overlayView = new FrameLayout(this);
@@ -124,11 +136,10 @@ public class DimOverlayService extends Service {
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE |
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
                         WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS |
-                        WindowManager.LayoutParams.FLAG_FULLSCREEN |
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 PixelFormat.TRANSLUCENT
         );
 
@@ -153,11 +164,16 @@ public class DimOverlayService extends Service {
         else showOverlay(dimAmount);
     }
 
+    private void removeOverlay() {
+        if (windowManager != null && overlayView != null) {
+            windowManager.removeView(overlayView);
+            overlayView = null;
+        }
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (windowManager != null && overlayView != null) {
-            windowManager.removeView(overlayView);
-        }
+        removeOverlay();
     }
 }
