@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="#22223B"
+        android:pathData="M48,8a40,40 0 1,0 0,80a40,40 0 1,0 0,-80" />
+
+    <!-- Dimmed bar (base - gray) -->
+    <path
+        android:fillColor="#4A4E69"
+        android:pathData="M20,55
+                          h56
+                          a6,6 0 0 1 6,6
+                          v2
+                          a6,6 0 0 1 -6,6
+                          h-56
+                          a6,6 0 0 1 -6,-6
+                          v-2
+                          a6,6 0 0 1 6,-6
+                          z" />
+
+    <!-- Dimmed bar (filled - yellow, half width) -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M20,55
+                          h28
+                          a6,6 0 0 1 6,6
+                          v2
+                          a6,6 0 0 1 -6,6
+                          h-28
+                          a6,6 0 0 1 -6,-6
+                          v-2
+                          a6,6 0 0 1 6,-6
+                          z" />
+
+    <!-- Sun (right) -->
+    <path
+        android:fillColor="#FFD600"
+        android:pathData="M72,36a8,8 0 1,1 -16,0a8,8 0 1,1 16,0" />
+
+    <!-- Moon (left) -->
+    <path
+        android:fillColor="#B0B0B0"
+        android:pathData="M32,29a8,8 0 1,0 8,8a6,6 0 1,1 -8,-8z" />
+
+    <!-- Glow for sun -->
+    <path
+        android:fillColor="#FFFF8D"
+        android:fillAlpha="0.3"
+        android:pathData="M72,36a14,14 0 1,1 -28,0a14,14 0 1,1 28,0" />
+</vector>
