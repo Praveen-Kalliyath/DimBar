@@ -83,18 +83,14 @@ public class DimOverlayService extends Service {
                     return START_STICKY;
 
                 case "PLUS":
-                    currentDim -= 0.05f;
-                    if (currentDim < 0f) currentDim = 0f;
-                    updateDim(currentDim);
-                    notifyDimChange();
+                    if (currentDim < 1f) currentDim += 0.05f; // step
+                    if (!isPaused) updateDim(currentDim);
                     updateNotification();
                     return START_STICKY;
 
                 case "MINUS":
-                    currentDim += 0.05f;
-                    if (currentDim > 1f) currentDim = 1f;
-                    updateDim(currentDim);
-                    notifyDimChange();
+                    if (currentDim > 0f) currentDim -= 0.05f; // step
+                    if (!isPaused) updateDim(currentDim);
                     updateNotification();
                     return START_STICKY;
             }
@@ -146,28 +142,45 @@ public class DimOverlayService extends Service {
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 flags);
 
-        PendingIntent pausePending = PendingIntent.getService(this, 1,
-                new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
+        PendingIntent pausePending = PendingIntent.getService(
+                this, 1, new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
 
-        PendingIntent stopPending = PendingIntent.getService(this, 2,
-                new Intent(this, DimOverlayService.class).setAction("CLOSE"), flags);
+        PendingIntent stopPending = PendingIntent.getService(
+                this, 2, new Intent(this, DimOverlayService.class).setAction("CLOSE"), flags);
 
-        PendingIntent plusPending = PendingIntent.getService(this, 3,
-                new Intent(this, DimOverlayService.class).setAction("PLUS"), flags);
+        PendingIntent plusPending = PendingIntent.getService(
+                this, 3, new Intent(this, DimOverlayService.class).setAction("PLUS"), flags);
 
-        PendingIntent minusPending = PendingIntent.getService(this, 4,
-                new Intent(this, DimOverlayService.class).setAction("MINUS"), flags);
+        PendingIntent minusPending = PendingIntent.getService(
+                this, 4, new Intent(this, DimOverlayService.class).setAction("MINUS"), flags);
 
         RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimbar);
+
         layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
         layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
         layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
         layout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
 
+        // Update pause icon/color
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
         layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.GREEN : Color.parseColor("#FFC107"));
+
+        // Always active stop button
         layout.setInt(R.id.btn_close, "setColorFilter", Color.parseColor("#FFC107"));
+
+        // Grey out plus/minus based on currentDim
+        if (currentDim <= 0f) {
+            layout.setInt(R.id.btn_minus, "setColorFilter", Color.GRAY);
+        } else {
+            layout.setInt(R.id.btn_minus, "setColorFilter", Color.parseColor("#FFC107"));
+        }
+
+        if (currentDim >= 1f) {
+            layout.setInt(R.id.btn_plus, "setColorFilter", Color.GRAY);
+        } else {
+            layout.setInt(R.id.btn_plus, "setColorFilter", Color.parseColor("#FFC107"));
+        }
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
