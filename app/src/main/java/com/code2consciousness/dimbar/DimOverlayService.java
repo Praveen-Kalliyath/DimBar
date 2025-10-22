@@ -38,7 +38,7 @@ public class DimOverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Handle notification button actions
+        // Handle notification actions
         if (intent != null && intent.getAction() != null) {
             switch (intent.getAction()) {
                 case "CLOSE":
@@ -60,7 +60,7 @@ public class DimOverlayService extends Service {
             }
         }
 
-        // Start as foreground service
+        // Start foreground service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else {
@@ -93,31 +93,36 @@ public class DimOverlayService extends Service {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags |= PendingIntent.FLAG_IMMUTABLE;
 
-        // PendingIntent to open MainActivity
+        // Tap notification → open MainActivity
         Intent openAppIntent = new Intent(this, MainActivity.class);
         openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openAppPending = PendingIntent.getActivity(this, 0, openAppIntent, flags);
 
-        // Pause button
+        // Pause action
         PendingIntent pausePending = PendingIntent.getService(
                 this, 1,
-                new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
+                new Intent(this, DimOverlayService.class).setAction("PAUSE"),
+                flags
+        );
 
-        // Stop button
+        // Close action
         PendingIntent stopPending = PendingIntent.getService(
                 this, 2,
-                new Intent(this, DimOverlayService.class).setAction("CLOSE"), flags);
+                new Intent(this, DimOverlayService.class).setAction("CLOSE"),
+                flags
+        );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
                 .setContentTitle("DimBar Active")
-                .setContentText("Tap to open DimBar controls")
+//                .setContentText("Tap to adjust or close dimming")
                 .setContentIntent(openAppPending)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .addAction(android.R.drawable.ic_media_pause, "Pause", pausePending)
-                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", stopPending)
+                // ✅ Icon-only buttons (no text)
+                .addAction(R.drawable.ic_pause, "", pausePending)
+                .addAction(R.drawable.ic_power, "", stopPending)
                 .build();
     }
 

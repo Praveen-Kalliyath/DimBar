@@ -79,10 +79,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Pause button
         pauseButton = new ImageButton(this);
-        pauseButton.setImageResource(android.R.drawable.ic_media_pause);
+        pauseButton.setImageResource(R.drawable.ic_pause);
         pauseButton.setBackgroundColor(Color.TRANSPARENT);
         pauseButton.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
-        LinearLayout.LayoutParams pauseParams = new LinearLayout.LayoutParams(30, 160);
+        LinearLayout.LayoutParams pauseParams = new LinearLayout.LayoutParams(100, 180);
         pauseParams.gravity = Gravity.CENTER_VERTICAL;
         pauseParams.leftMargin = 16;
         pauseButton.setLayoutParams(pauseParams);
@@ -100,11 +100,11 @@ public class MainActivity extends AppCompatActivity {
         stopButton.setImageResource(android.R.drawable.ic_lock_power_off);
         stopButton.setBackgroundColor(Color.TRANSPARENT);
         stopButton.setColorFilter(Color.CYAN, PorterDuff.Mode.SRC_IN);
-        stopButton.setScaleX(1.0f);
-        stopButton.setScaleY(1.0f);
+        stopButton.setScaleX(1.5f);
+        stopButton.setScaleY(1.5f);
         stopButton.setPadding(0, 0, 0, 0);
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                80, 80);
+                120, 120);
         btnParams.gravity = Gravity.CENTER_VERTICAL;
         btnParams.leftMargin = 32;
         stopButton.setLayoutParams(btnParams);
