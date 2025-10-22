@@ -25,12 +25,15 @@ public class DimOverlayService extends Service {
     private WindowManager windowManager;
     private FrameLayout overlayView;
     private float currentDim = 0.5f;
+    private boolean isPaused = false;
+
     private static final String CHANNEL_ID = "dim_overlay_channel";
 
+    public static final String ACTION_PAUSE_STATE_CHANGED = "com.code2consciousness.dimbar.ACTION_PAUSE_STATE_CHANGED";
+    public static final String EXTRA_IS_PAUSED = "is_paused";
+
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 
     @Override
     public void onCreate() {
@@ -40,29 +43,37 @@ public class DimOverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Handle notification actions
         if (intent != null && intent.getAction() != null) {
             switch (intent.getAction()) {
                 case "CLOSE":
                     removeOverlay();
                     stopSelf();
-                    // Close MainActivity if open
                     LocalBroadcastManager.getInstance(this)
                             .sendBroadcast(new Intent("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
                     return START_NOT_STICKY;
 
                 case "PAUSE":
-                    updateDim(0f);
+                    if (!isPaused) {
+                        isPaused = true;
+                        updateDim(0f);
+                        sendPauseBroadcast(true);
+                    } else {
+                        isPaused = false;
+                        updateDim(currentDim == 0f ? 0.5f : currentDim);
+                        sendPauseBroadcast(false);
+                    }
+                    updateNotification();
                     return START_STICKY;
 
                 case "UPDATE_DIM":
                     float dimAmount = intent.getFloatExtra("dim_amount", currentDim);
-                    updateDim(dimAmount);
+                    currentDim = dimAmount;
+                    if (!isPaused)
+                        updateDim(dimAmount);
                     return START_STICKY;
             }
         }
 
-        // Start foreground service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else {
@@ -81,10 +92,7 @@ public class DimOverlayService extends Service {
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null && manager.getNotificationChannel(CHANNEL_ID) == null) {
                 NotificationChannel channel = new NotificationChannel(
-                        CHANNEL_ID,
-                        "DimBar Overlay",
-                        NotificationManager.IMPORTANCE_LOW
-                );
+                        CHANNEL_ID, "DimBar Overlay", NotificationManager.IMPORTANCE_LOW);
                 channel.setShowBadge(false);
                 manager.createNotificationChannel(channel);
             }
@@ -92,59 +100,50 @@ public class DimOverlayService extends Service {
     }
 
     private Notification createNotification() {
+        return buildNotification();
+    }
+
+    private void updateNotification() {
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        manager.notify(1, buildNotification());
+    }
+
+    private Notification buildNotification() {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags |= PendingIntent.FLAG_IMMUTABLE;
 
-        // Tap notification → open MainActivity
         Intent openAppIntent = new Intent(this, MainActivity.class);
         openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openAppPending = PendingIntent.getActivity(this, 0, openAppIntent, flags);
 
-        // Pause action
         PendingIntent pausePending = PendingIntent.getService(
-                this, 1,
-                new Intent(this, DimOverlayService.class).setAction("PAUSE"),
-                flags
-        );
+                this, 1, new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
 
-        // Close action
         PendingIntent stopPending = PendingIntent.getService(
-                this, 2,
-                new Intent(this, DimOverlayService.class).setAction("CLOSE"),
-                flags
-        );
+                this, 2, new Intent(this, DimOverlayService.class).setAction("CLOSE"), flags);
 
-        // RemoteViews custom layout
-        RemoteViews notificationLayout = new RemoteViews(getPackageName(), R.layout.notification_dimbar);
-        notificationLayout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
-        notificationLayout.setOnClickPendingIntent(R.id.btn_close, stopPending);
-        notificationLayout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
-        notificationLayout.setInt(R.id.btn_pause, "setColorFilter", Color.GRAY); // Transparent bg
-        notificationLayout.setInt(R.id.btn_close, "setColorFilter", Color.GRAY); // Transparent bg
+        RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimbar);
+        layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
+        layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
+        layout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
 
+        layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+        layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.LTGRAY : Color.YELLOW);
+        layout.setInt(R.id.btn_close, "setColorFilter", Color.GRAY);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
-//                .setContentTitle("DimBar Active")
-//                .setContentText("Tap to adjust or close dimming")
-                .setCustomContentView(notificationLayout)
-//                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(layout)
                 .setContentIntent(openAppPending)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                // ✅ Icon-only buttons (no text)
-                .addAction(R.drawable.ic_pause, "", pausePending)
-                .addAction(R.drawable.ic_power, "", stopPending)
                 .build();
     }
 
-
     private void showOverlay(float dimAmount) {
-        if (windowManager == null) {
-            windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        }
+        if (windowManager == null) windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (overlayView != null) windowManager.removeView(overlayView);
 
         overlayView = new FrameLayout(this);
@@ -164,7 +163,8 @@ public class DimOverlayService extends Service {
         );
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            params.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
 
         params.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -179,7 +179,6 @@ public class DimOverlayService extends Service {
     }
 
     public void updateDim(float dimAmount) {
-        currentDim = dimAmount;
         if (overlayView != null) overlayView.setAlpha(dimAmount);
         else showOverlay(dimAmount);
     }
@@ -189,6 +188,12 @@ public class DimOverlayService extends Service {
             windowManager.removeView(overlayView);
             overlayView = null;
         }
+    }
+
+    private void sendPauseBroadcast(boolean paused) {
+        Intent intent = new Intent(ACTION_PAUSE_STATE_CHANGED);
+        intent.putExtra(EXTRA_IS_PAUSED, paused);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @Override

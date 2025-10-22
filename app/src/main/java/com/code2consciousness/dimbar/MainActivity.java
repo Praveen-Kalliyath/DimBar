@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -19,7 +18,6 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -33,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton stopButton;
     private ImageButton pauseButton;
     private BroadcastReceiver closeReceiver;
+    private BroadcastReceiver pauseStateReceiver;
     private boolean isPaused = false;
     private float lastDim = 0.5f;
 
@@ -40,7 +39,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Transparent activity
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
@@ -50,7 +48,6 @@ public class MainActivity extends AppCompatActivity {
                 WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         getWindow().setDimAmount(0f);
 
-        // Rounded background for controls
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setColor(Color.parseColor("#AA444444"));
         bgDrawable.setCornerRadius(48f);
@@ -67,13 +64,10 @@ public class MainActivity extends AppCompatActivity {
         innerParams.gravity = Gravity.CENTER;
         innerLayout.setLayoutParams(innerParams);
 
-
-        // SeekBar
         seekBar = new SeekBar(this);
         seekBar.setMax(100);
         seekBar.setProgress(50);
-        // keep your custom SeekBar drawable if present
-         seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
+        seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
         seekBar.getThumb().setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(
                 550,
@@ -81,7 +75,6 @@ public class MainActivity extends AppCompatActivity {
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
 
-        // Pause button
         pauseButton = new ImageButton(this);
         pauseButton.setImageResource(R.drawable.ic_pause);
         pauseButton.setBackgroundColor(Color.TRANSPARENT);
@@ -99,21 +92,17 @@ public class MainActivity extends AppCompatActivity {
         splitterParams.gravity = Gravity.CENTER_VERTICAL;
         splitter.setLayoutParams(splitterParams);
 
-        // Stop button
         stopButton = new ImageButton(this);
         stopButton.setImageResource(android.R.drawable.ic_lock_power_off);
         stopButton.setBackgroundColor(Color.TRANSPARENT);
         stopButton.setColorFilter(Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
         stopButton.setScaleX(1.5f);
         stopButton.setScaleY(1.5f);
-        stopButton.setPadding(0, 0, 0, 0);
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                120, 120);
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(120, 120);
         btnParams.gravity = Gravity.CENTER_VERTICAL;
         btnParams.leftMargin = 32;
         stopButton.setLayoutParams(btnParams);
 
-        // Add views to layout
         innerLayout.addView(seekBar);
         innerLayout.addView(pauseButton);
         innerLayout.addView(splitter);
@@ -123,15 +112,10 @@ public class MainActivity extends AppCompatActivity {
         outerLayout.setOrientation(LinearLayout.VERTICAL);
         outerLayout.setGravity(Gravity.CENTER);
         outerLayout.setBackgroundColor(Color.TRANSPARENT);
-        outerLayout.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-
         outerLayout.addView(innerLayout);
 
         setContentView(outerLayout);
 
-        // SeekBar listener
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -141,36 +125,35 @@ public class MainActivity extends AppCompatActivity {
                     updateOverlay(dimAmount);
                 }
             }
+
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        // Pause button listener
         pauseButton.setOnClickListener(v -> {
             if (isPaused) {
-                // Resume
                 isPaused = false;
+                pauseButton.setImageResource(R.drawable.ic_pause);
                 pauseButton.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
                 updateOverlay(lastDim);
+                sendPauseBroadcast(false);
             } else {
-                // Pause
                 isPaused = true;
+                pauseButton.setImageResource(R.drawable.ic_play);
                 pauseButton.setColorFilter(Color.LTGRAY, PorterDuff.Mode.SRC_IN);
                 updateOverlay(0f);
+                sendPauseBroadcast(true);
             }
         });
 
-        // Stop button listener
         stopButton.setOnClickListener(v -> stopOverlay());
 
-        // Request overlay permission if needed
         if (!Settings.canDrawOverlays(this)) {
             requestOverlayPermission();
         } else {
             updateOverlay(seekBar.getProgress() / 100f);
         }
 
-        // Register BroadcastReceiver to close app
         closeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -179,6 +162,23 @@ public class MainActivity extends AppCompatActivity {
         };
         LocalBroadcastManager.getInstance(this).registerReceiver(closeReceiver,
                 new IntentFilter("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
+
+        // Receive pause/resume updates from notification
+        pauseStateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (DimOverlayService.ACTION_PAUSE_STATE_CHANGED.equals(intent.getAction())) {
+                    boolean paused = intent.getBooleanExtra(DimOverlayService.EXTRA_IS_PAUSED, false);
+                    isPaused = paused;
+                    pauseButton.setImageResource(paused ? R.drawable.ic_play : R.drawable.ic_pause);
+                    pauseButton.setColorFilter(paused ? Color.LTGRAY : Color.YELLOW, PorterDuff.Mode.SRC_IN);
+                }
+            }
+        };
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                pauseStateReceiver,
+                new IntentFilter(DimOverlayService.ACTION_PAUSE_STATE_CHANGED)
+        );
     }
 
     private void requestOverlayPermission() {
@@ -208,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, DimOverlayService.class);
         intent.setAction("CLOSE");
         startService(intent);
-        finish(); // close MainActivity
+        finish();
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
@@ -221,11 +221,18 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
+    private void sendPauseBroadcast(boolean paused) {
+        Intent intent = new Intent(DimOverlayService.ACTION_PAUSE_STATE_CHANGED);
+        intent.putExtra(DimOverlayService.EXTRA_IS_PAUSED, paused);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (closeReceiver != null) {
+        if (closeReceiver != null)
             LocalBroadcastManager.getInstance(this).unregisterReceiver(closeReceiver);
-        }
+        if (pauseStateReceiver != null)
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
     }
 }
