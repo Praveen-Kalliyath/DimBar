@@ -79,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
         pauseButton = new ImageButton(this);
         pauseButton.setImageResource(R.drawable.ic_pause);
         pauseButton.setBackgroundColor(Color.TRANSPARENT);
-        pauseButton.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
+        pauseButton.setColorFilter(Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams pauseParams = new LinearLayout.LayoutParams(100, 180);
         pauseParams.gravity = Gravity.CENTER_VERTICAL;
         pauseParams.leftMargin = 16;
@@ -172,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
                 if (DimOverlayService.ACTION_PAUSE_STATE_CHANGED.equals(intent.getAction())) {
                     isPaused = intent.getBooleanExtra(DimOverlayService.EXTRA_IS_PAUSED, false);
                     pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
-                    pauseButton.setColorFilter(isPaused ? Color.LTGRAY : Color.YELLOW, PorterDuff.Mode.SRC_IN);
+                    pauseButton.setColorFilter(isPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
                 }
             }
         };

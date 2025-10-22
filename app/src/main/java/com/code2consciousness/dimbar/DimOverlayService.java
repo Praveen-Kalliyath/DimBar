@@ -36,7 +36,9 @@ public class DimOverlayService extends Service {
     public static final String EXTRA_IS_PAUSED = "is_paused";
 
     @Override
-    public IBinder onBind(Intent intent) { return null; }
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
     @Override
     public void onCreate() {
@@ -112,7 +114,9 @@ public class DimOverlayService extends Service {
         }
     }
 
-    private Notification createNotification() { return buildNotification(); }
+    private Notification createNotification() {
+        return buildNotification();
+    }
 
     private void updateNotification() {
         NotificationManager manager = getSystemService(NotificationManager.class);
@@ -140,8 +144,8 @@ public class DimOverlayService extends Service {
         layout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
 
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
-        layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.LTGRAY : Color.YELLOW);
-        layout.setInt(R.id.btn_close, "setColorFilter", Color.GRAY);
+        layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.GREEN : Color.parseColor("#FFC107"));
+        layout.setInt(R.id.btn_close, "setColorFilter", Color.parseColor("#FFC107"));
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
