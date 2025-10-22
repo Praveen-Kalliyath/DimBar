@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.IBinder;
@@ -14,6 +15,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.RemoteViews;
 
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -112,19 +114,32 @@ public class DimOverlayService extends Service {
                 flags
         );
 
+        // RemoteViews custom layout
+        RemoteViews notificationLayout = new RemoteViews(getPackageName(), R.layout.notification_dimbar);
+        notificationLayout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
+        notificationLayout.setOnClickPendingIntent(R.id.btn_close, stopPending);
+        notificationLayout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
+        notificationLayout.setInt(R.id.btn_pause, "setColorFilter", Color.GRAY); // Transparent bg
+        notificationLayout.setInt(R.id.btn_close, "setColorFilter", Color.CYAN); // Transparent bg
+
+
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
-                .setContentTitle("DimBar Active")
+//                .setContentTitle("DimBar Active")
 //                .setContentText("Tap to adjust or close dimming")
+                .setCustomContentView(notificationLayout)
+                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                 .setContentIntent(openAppPending)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 // ✅ Icon-only buttons (no text)
                 .addAction(R.drawable.ic_pause, "", pausePending)
                 .addAction(R.drawable.ic_power, "", stopPending)
                 .build();
     }
+
 
     private void showOverlay(float dimAmount) {
         if (windowManager == null) {

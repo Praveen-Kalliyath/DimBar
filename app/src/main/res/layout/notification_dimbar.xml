@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:gravity="center_vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@android:color/transparent">
+
+    <!-- App Icon -->
+    <ImageView
+        android:id="@+id/icon_dimbar"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_launcher"
+        android:contentDescription="DimBar Icon"
+        app:tint="@android:color/white" />
+
+    <!-- Spacer replacement -->
+    <TextView
+        android:id="@+id/spacer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="DimBar Active" />
+
+    <!-- Pause Button -->
+    <ImageButton
+        android:id="@+id/btn_pause"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?android:selectableItemBackground"
+        android:src="@drawable/ic_pause"
+        android:contentDescription="Pause"
+        app:tint="@android:color/black" />
+
+    <!-- Close Button -->
+    <ImageButton
+        android:id="@+id/btn_close"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?android:selectableItemBackground"
+        android:src="@drawable/ic_power"
+        android:contentDescription="Close"
+        app:tint="@android:color/black" />
+
+</LinearLayout>
