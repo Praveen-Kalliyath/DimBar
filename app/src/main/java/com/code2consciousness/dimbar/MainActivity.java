@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Transparent activity & layout setup
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
@@ -116,6 +117,7 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(outerLayout);
 
+        // SeekBar listener
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -130,20 +132,19 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
+        // Pause button listener
         pauseButton.setOnClickListener(v -> {
-            if (isPaused) {
-                isPaused = false;
-                pauseButton.setImageResource(R.drawable.ic_pause);
-                pauseButton.setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
-                updateOverlay(lastDim);
-                sendPauseBroadcast(false);
-            } else {
-                isPaused = true;
-                pauseButton.setImageResource(R.drawable.ic_play);
-                pauseButton.setColorFilter(Color.LTGRAY, PorterDuff.Mode.SRC_IN);
-                updateOverlay(0f);
-                sendPauseBroadcast(true);
-            }
+            isPaused = !isPaused;
+            pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+            pauseButton.setColorFilter(isPaused ? Color.LTGRAY : Color.YELLOW, PorterDuff.Mode.SRC_IN);
+
+            float dimAmount = isPaused ? 0f : lastDim;
+            updateOverlay(dimAmount);
+
+            // Broadcast to service & notification
+            Intent intent = new Intent(DimOverlayService.ACTION_PAUSE_STATE_CHANGED);
+            intent.putExtra(DimOverlayService.EXTRA_IS_PAUSED, isPaused);
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
         });
 
         stopButton.setOnClickListener(v -> stopOverlay());
@@ -154,31 +155,29 @@ public class MainActivity extends AppCompatActivity {
             updateOverlay(seekBar.getProgress() / 100f);
         }
 
+        // Close app receiver
         closeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 finish();
             }
         };
-        LocalBroadcastManager.getInstance(this).registerReceiver(closeReceiver,
-                new IntentFilter("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(closeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
 
-        // Receive pause/resume updates from notification
+        // Receive pause updates from service/notification
         pauseStateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (DimOverlayService.ACTION_PAUSE_STATE_CHANGED.equals(intent.getAction())) {
-                    boolean paused = intent.getBooleanExtra(DimOverlayService.EXTRA_IS_PAUSED, false);
-                    isPaused = paused;
-                    pauseButton.setImageResource(paused ? R.drawable.ic_play : R.drawable.ic_pause);
-                    pauseButton.setColorFilter(paused ? Color.LTGRAY : Color.YELLOW, PorterDuff.Mode.SRC_IN);
+                    isPaused = intent.getBooleanExtra(DimOverlayService.EXTRA_IS_PAUSED, false);
+                    pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+                    pauseButton.setColorFilter(isPaused ? Color.LTGRAY : Color.YELLOW, PorterDuff.Mode.SRC_IN);
                 }
             }
         };
-        LocalBroadcastManager.getInstance(this).registerReceiver(
-                pauseStateReceiver,
-                new IntentFilter(DimOverlayService.ACTION_PAUSE_STATE_CHANGED)
-        );
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(pauseStateReceiver, new IntentFilter(DimOverlayService.ACTION_PAUSE_STATE_CHANGED));
     }
 
     private void requestOverlayPermission() {
@@ -214,25 +213,15 @@ public class MainActivity extends AppCompatActivity {
     private boolean isServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
-            }
+            if (serviceClass.getName().equals(service.service.getClassName())) return true;
         }
         return false;
-    }
-
-    private void sendPauseBroadcast(boolean paused) {
-        Intent intent = new Intent(DimOverlayService.ACTION_PAUSE_STATE_CHANGED);
-        intent.putExtra(DimOverlayService.EXTRA_IS_PAUSED, paused);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (closeReceiver != null)
-            LocalBroadcastManager.getInstance(this).unregisterReceiver(closeReceiver);
-        if (pauseStateReceiver != null)
-            LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
+        if (closeReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(closeReceiver);
+        if (pauseStateReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
     }
 }

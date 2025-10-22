@@ -42,28 +42,21 @@ public class DimOverlayService extends Service {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+
+        // Receive pause/resume broadcast from app
         pauseStateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (ACTION_PAUSE_STATE_CHANGED.equals(intent.getAction())) {
-                    boolean paused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false);
-                    // Update the overlay and notification accordingly
-                    if (paused) {
-                        updateDim(0f);
-                        currentDim = 0f;
-                    } else {
-                        updateDim(0.5f);
-                        currentDim = 0.5f;
-                    }
+                    isPaused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false);
+                    float dimAmount = isPaused ? 0f : currentDim;
+                    updateDim(dimAmount);
                     updateNotification();
                 }
             }
         };
-        LocalBroadcastManager.getInstance(this).registerReceiver(
-                pauseStateReceiver,
-                new IntentFilter(ACTION_PAUSE_STATE_CHANGED)
-        );
-
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(pauseStateReceiver, new IntentFilter(ACTION_PAUSE_STATE_CHANGED));
     }
 
     @Override
@@ -78,36 +71,31 @@ public class DimOverlayService extends Service {
                     return START_NOT_STICKY;
 
                 case "PAUSE":
-                    if (!isPaused) {
-                        isPaused = true;
-                        updateDim(0f);
-                        sendPauseBroadcast(true);
-                    } else {
-                        isPaused = false;
-                        updateDim(currentDim == 0f ? 0.5f : currentDim);
-                        sendPauseBroadcast(false);
-                    }
+                    isPaused = !isPaused;
+                    float dimAmount = isPaused ? 0f : currentDim;
+                    updateDim(dimAmount);
+                    sendPauseBroadcast(isPaused);
                     updateNotification();
                     return START_STICKY;
 
                 case "UPDATE_DIM":
-                    float dimAmount = intent.getFloatExtra("dim_amount", currentDim);
-                    currentDim = dimAmount;
-                    if (!isPaused)
-                        updateDim(dimAmount);
+                    currentDim = intent.getFloatExtra("dim_amount", currentDim);
+                    if (!isPaused) updateDim(currentDim);
                     return START_STICKY;
             }
         }
 
+        // Start foreground notification
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else {
             startForeground(1, createNotification());
         }
 
+        // Show overlay
         float dimAmount = (intent != null) ? intent.getFloatExtra("dim_amount", 0.5f) : 0.5f;
         currentDim = dimAmount;
-        showOverlay(dimAmount);
+        if (!isPaused) showOverlay(dimAmount);
 
         return START_STICKY;
     }
@@ -116,17 +104,15 @@ public class DimOverlayService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null && manager.getNotificationChannel(CHANNEL_ID) == null) {
-                NotificationChannel channel = new NotificationChannel(
-                        CHANNEL_ID, "DimBar Overlay", NotificationManager.IMPORTANCE_LOW);
+                NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
+                        "DimBar Overlay", NotificationManager.IMPORTANCE_LOW);
                 channel.setShowBadge(false);
                 manager.createNotificationChannel(channel);
             }
         }
     }
 
-    private Notification createNotification() {
-        return buildNotification();
-    }
+    private Notification createNotification() { return buildNotification(); }
 
     private void updateNotification() {
         NotificationManager manager = getSystemService(NotificationManager.class);
@@ -137,9 +123,10 @@ public class DimOverlayService extends Service {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags |= PendingIntent.FLAG_IMMUTABLE;
 
-        Intent openAppIntent = new Intent(this, MainActivity.class);
-        openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent openAppPending = PendingIntent.getActivity(this, 0, openAppIntent, flags);
+        PendingIntent openAppPending = PendingIntent.getActivity(this, 0,
+                new Intent(this, MainActivity.class)
+                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                flags);
 
         PendingIntent pausePending = PendingIntent.getService(
                 this, 1, new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
@@ -225,9 +212,7 @@ public class DimOverlayService extends Service {
     public void onDestroy() {
         super.onDestroy();
         removeOverlay();
-        if (pauseStateReceiver != null) {
+        if (pauseStateReceiver != null)
             LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
-        }
-
     }
 }
