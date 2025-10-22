@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setColor(Color.parseColor("#AA444444"));
         bgDrawable.setCornerRadius(48f);
-        bgDrawable.setStroke(3, Color.CYAN);
+        bgDrawable.setStroke(3, Color.parseColor("#FFC107"));
 
         LinearLayout innerLayout = new LinearLayout(this);
         innerLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
         stopButton = new ImageButton(this);
         stopButton.setImageResource(android.R.drawable.ic_lock_power_off);
         stopButton.setBackgroundColor(Color.TRANSPARENT);
-        stopButton.setColorFilter(Color.CYAN, PorterDuff.Mode.SRC_IN);
+        stopButton.setColorFilter(Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
         stopButton.setScaleX(1.5f);
         stopButton.setScaleY(1.5f);
         stopButton.setPadding(0, 0, 0, 0);
@@ -155,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 // Pause
                 isPaused = true;
-                pauseButton.setColorFilter(Color.GRAY, PorterDuff.Mode.SRC_IN);
+                pauseButton.setColorFilter(Color.LTGRAY, PorterDuff.Mode.SRC_IN);
                 updateOverlay(0f);
             }
         });
