@@ -1,67 +1,62 @@
-<?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="72dp"
+<LinearLayout android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="8dp"
     android:background="@android:color/transparent"
-    android:padding="8dp">
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- DimBar Icon / Open App -->
     <ImageView
         android:id="@+id/icon_dimbar"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:src="@drawable/ic_launcher"
-        android:layout_alignParentStart="true"
-        android:layout_centerVertical="true"
-        android:contentDescription="DimBar" />
-
-    <!-- Minus Button -->
-    <ImageButton
-        android:id="@+id/btn_minus"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_toEndOf="@id/icon_dimbar"
-        android:layout_marginStart="16dp"
-        android:background="@android:color/transparent"
-        android:src="@drawable/ic_minus"
-        android:contentDescription="Decrease Dim"
-      />
-
-    <!-- Plus Button -->
-    <ImageButton
-        android:id="@+id/btn_plus"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_toEndOf="@id/btn_minus"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_marginStart="8dp"
-        android:background="@android:color/transparent"
-        android:src="@drawable/ic_plus"
-        android:contentDescription="Increase Dim"
-  />
+        android:layout_marginEnd="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_launcher"/>
 
-    <!-- Pause Button -->
-    <ImageButton
+    <!-- Minus button -->
+    <ImageView
+        android:id="@+id/btn_minus"
+        android:layout_width="50dp"
+        android:layout_height="40dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_minus" />
+
+    <!-- Plus button -->
+    <ImageView
+        android:id="@+id/btn_plus"
+        android:layout_width="50dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_plus" />
+
+    <!-- Splitter -->
+    <ImageView
+        android:id="@+id/splitter"
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/ic_splitter" />
+
+    <!-- Pause / Play button -->
+    <ImageView
         android:id="@+id/btn_pause"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_alignParentEnd="true"
-        android:layout_centerVertical="true"
-        android:layout_marginEnd="72dp"
-        android:background="@android:color/transparent"
-        android:src="@drawable/ic_pause"
-        android:contentDescription="Pause"
-       />
+        android:layout_width="50dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_pause" />
 
-    <!-- Close Button -->
-    <ImageButton
+
+    <!-- Stop / Close button -->
+    <ImageView
         android:id="@+id/btn_close"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_alignParentEnd="true"
-        android:layout_centerVertical="true"
-        android:background="@android:color/transparent"
-        android:src="@android:drawable/ic_lock_power_off"
-        android:contentDescription="Close"
-     />
+        android:layout_width="50dp"
+        android:layout_height="40dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_power" />
 
-</RelativeLayout>
+</LinearLayout>
