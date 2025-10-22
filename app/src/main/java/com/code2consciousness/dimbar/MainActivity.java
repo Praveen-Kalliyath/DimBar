@@ -87,16 +87,24 @@ public class MainActivity extends AppCompatActivity {
         pauseParams.leftMargin = 16;
         pauseButton.setLayoutParams(pauseParams);
 
+        ImageButton splitter = new ImageButton(this);
+        splitter.setImageResource(android.R.drawable.divider_horizontal_bright);
+        splitter.setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
+        splitter.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout.LayoutParams splitterParams = new LinearLayout.LayoutParams(32, 80);
+        splitterParams.gravity = Gravity.CENTER_VERTICAL;
+        splitter.setLayoutParams(splitterParams);
+
         // Stop button
         stopButton = new ImageButton(this);
         stopButton.setImageResource(android.R.drawable.ic_lock_power_off);
         stopButton.setBackgroundColor(Color.TRANSPARENT);
-        stopButton.setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
-        stopButton.setScaleX(1.5f);
-        stopButton.setScaleY(1.5f);
+        stopButton.setColorFilter(Color.CYAN, PorterDuff.Mode.SRC_IN);
+        stopButton.setScaleX(1.0f);
+        stopButton.setScaleY(1.0f);
         stopButton.setPadding(0, 0, 0, 0);
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                160, 160);
+                80, 80);
         btnParams.gravity = Gravity.CENTER_VERTICAL;
         btnParams.leftMargin = 32;
         stopButton.setLayoutParams(btnParams);
@@ -104,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         // Add views to layout
         innerLayout.addView(seekBar);
         innerLayout.addView(pauseButton);
+        innerLayout.addView(splitter);
         innerLayout.addView(stopButton);
 
         LinearLayout outerLayout = new LinearLayout(this);
