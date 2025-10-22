@@ -1,48 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="horizontal"
-    android:padding="6dp"
-    android:gravity="center_vertical"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@android:color/transparent">
+    android:layout_height="72dp"
+    android:background="@android:color/transparent"
+    android:padding="8dp">
 
-    <!-- App Icon -->
+    <!-- DimBar Icon / Open App -->
     <ImageView
         android:id="@+id/icon_dimbar"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:src="@drawable/ic_launcher"
-        android:contentDescription="DimBar Icon"
-        app:tint="@android:color/white" />
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:contentDescription="DimBar" />
 
-    <!-- Spacer replacement -->
-    <TextView
-        android:id="@+id/spacer"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="DimBar Active" />
+    <!-- Minus Button -->
+    <ImageButton
+        android:id="@+id/btn_minus"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_toEndOf="@id/icon_dimbar"
+        android:layout_marginStart="16dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/ic_minus"
+        android:contentDescription="Decrease Dim"
+      />
+
+    <!-- Plus Button -->
+    <ImageButton
+        android:id="@+id/btn_plus"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_toEndOf="@id/btn_minus"
+        android:layout_marginStart="8dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/ic_plus"
+        android:contentDescription="Increase Dim"
+  />
 
     <!-- Pause Button -->
     <ImageButton
         android:id="@+id/btn_pause"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="?android:selectableItemBackground"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="72dp"
+        android:background="@android:color/transparent"
         android:src="@drawable/ic_pause"
         android:contentDescription="Pause"
-        app:tint="@android:color/black" />
+       />
 
     <!-- Close Button -->
     <ImageButton
         android:id="@+id/btn_close"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="?android:selectableItemBackground"
-        android:src="@drawable/ic_power"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:background="@android:color/transparent"
+        android:src="@android:drawable/ic_lock_power_off"
         android:contentDescription="Close"
-        app:tint="@android:color/black" />
+     />
 
-</LinearLayout>
+</RelativeLayout>

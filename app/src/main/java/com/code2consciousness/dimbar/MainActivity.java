@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton pauseButton;
     private BroadcastReceiver closeReceiver;
     private BroadcastReceiver pauseStateReceiver;
+    private BroadcastReceiver dimChangeReceiver;
     private boolean isPaused = false;
     private float lastDim = 0.5f;
 
@@ -39,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Transparent activity & layout setup
+        // Transparent layout setup
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
@@ -59,11 +60,6 @@ public class MainActivity extends AppCompatActivity {
         innerLayout.setGravity(Gravity.CENTER);
         innerLayout.setPadding(64, 64, 64, 64);
         innerLayout.setBackground(bgDrawable);
-        LinearLayout.LayoutParams innerParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        innerParams.gravity = Gravity.CENTER;
-        innerLayout.setLayoutParams(innerParams);
 
         seekBar = new SeekBar(this);
         seekBar.setMax(100);
@@ -71,8 +67,7 @@ public class MainActivity extends AppCompatActivity {
         seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
         seekBar.getThumb().setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(
-                550,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
+                550, ViewGroup.LayoutParams.WRAP_CONTENT);
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
 
@@ -120,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
         // SeekBar listener
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
                 if (!isPaused) {
                     float dimAmount = (100 - progress) / 100f;
                     lastDim = dimAmount;
@@ -128,11 +123,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStartTrackingTouch(SeekBar sb) {}
+            @Override public void onStopTrackingTouch(SeekBar sb) {}
         });
 
-        // Pause button listener
         pauseButton.setOnClickListener(v -> {
             isPaused = !isPaused;
             pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
@@ -141,7 +135,6 @@ public class MainActivity extends AppCompatActivity {
             float dimAmount = isPaused ? 0f : lastDim;
             updateOverlay(dimAmount);
 
-            // Broadcast to service & notification
             Intent intent = new Intent(DimOverlayService.ACTION_PAUSE_STATE_CHANGED);
             intent.putExtra(DimOverlayService.EXTRA_IS_PAUSED, isPaused);
             LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
@@ -178,6 +171,19 @@ public class MainActivity extends AppCompatActivity {
         };
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(pauseStateReceiver, new IntentFilter(DimOverlayService.ACTION_PAUSE_STATE_CHANGED));
+
+        // Receive dim changes from notification buttons
+        dimChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                float dim = intent.getFloatExtra("dim_amount", lastDim);
+                lastDim = dim;
+                seekBar.setProgress((int)((1 - dim) * 100));
+                updateOverlay(dim);
+            }
+        };
+        LocalBroadcastManager.getInstance(this)
+                .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_DIM_CHANGED"));
     }
 
     private void requestOverlayPermission() {
@@ -195,11 +201,8 @@ public class MainActivity extends AppCompatActivity {
             intent.setAction("UPDATE_DIM");
             startService(intent);
         } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent);
-            } else {
-                startService(intent);
-            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent);
+            else startService(intent);
         }
     }
 
@@ -223,5 +226,6 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         if (closeReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(closeReceiver);
         if (pauseStateReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
+        if (dimChangeReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(dimChangeReceiver);
     }
 }

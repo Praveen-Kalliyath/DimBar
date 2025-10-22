@@ -36,16 +36,13 @@ public class DimOverlayService extends Service {
     public static final String EXTRA_IS_PAUSED = "is_paused";
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
 
-        // Receive pause/resume broadcast from app
         pauseStateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -74,8 +71,7 @@ public class DimOverlayService extends Service {
 
                 case "PAUSE":
                     isPaused = !isPaused;
-                    float dimAmount = isPaused ? 0f : currentDim;
-                    updateDim(dimAmount);
+                    updateDim(isPaused ? 0f : currentDim);
                     sendPauseBroadcast(isPaused);
                     updateNotification();
                     return START_STICKY;
@@ -83,23 +79,41 @@ public class DimOverlayService extends Service {
                 case "UPDATE_DIM":
                     currentDim = intent.getFloatExtra("dim_amount", currentDim);
                     if (!isPaused) updateDim(currentDim);
+                    updateNotification();
+                    return START_STICKY;
+
+                case "PLUS":
+                    currentDim -= 0.05f;
+                    if (currentDim < 0f) currentDim = 0f;
+                    updateDim(currentDim);
+                    notifyDimChange();
+                    updateNotification();
+                    return START_STICKY;
+
+                case "MINUS":
+                    currentDim += 0.05f;
+                    if (currentDim > 1f) currentDim = 1f;
+                    updateDim(currentDim);
+                    notifyDimChange();
+                    updateNotification();
                     return START_STICKY;
             }
         }
 
         // Start foreground notification
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        } else {
+        else
             startForeground(1, createNotification());
-        }
 
-        // Show overlay
-        float dimAmount = (intent != null) ? intent.getFloatExtra("dim_amount", 0.5f) : 0.5f;
-        currentDim = dimAmount;
-        if (!isPaused) showOverlay(dimAmount);
-
+        if (!isPaused) showOverlay(currentDim);
         return START_STICKY;
+    }
+
+    private void notifyDimChange() {
+        Intent intent = new Intent("com.code2consciousness.dimbar.ACTION_DIM_CHANGED");
+        intent.putExtra("dim_amount", currentDim);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     private void createNotificationChannel() {
@@ -132,15 +146,23 @@ public class DimOverlayService extends Service {
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 flags);
 
-        PendingIntent pausePending = PendingIntent.getService(
-                this, 1, new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
+        PendingIntent pausePending = PendingIntent.getService(this, 1,
+                new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);
 
-        PendingIntent stopPending = PendingIntent.getService(
-                this, 2, new Intent(this, DimOverlayService.class).setAction("CLOSE"), flags);
+        PendingIntent stopPending = PendingIntent.getService(this, 2,
+                new Intent(this, DimOverlayService.class).setAction("CLOSE"), flags);
+
+        PendingIntent plusPending = PendingIntent.getService(this, 3,
+                new Intent(this, DimOverlayService.class).setAction("PLUS"), flags);
+
+        PendingIntent minusPending = PendingIntent.getService(this, 4,
+                new Intent(this, DimOverlayService.class).setAction("MINUS"), flags);
 
         RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimbar);
         layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
+        layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
+        layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
         layout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
 
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
@@ -178,10 +200,8 @@ public class DimOverlayService extends Service {
                 PixelFormat.TRANSLUCENT
         );
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            params.layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
 
         params.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
@@ -215,9 +235,7 @@ public class DimOverlayService extends Service {
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
-        // Remove overlay
         removeOverlay();
-        // Stop the service
         stopSelf();
     }
 
