@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -18,6 +19,7 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -50,8 +52,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Rounded background for controls
         GradientDrawable bgDrawable = new GradientDrawable();
-        bgDrawable.setColor(Color.parseColor("#AA222222"));
+        bgDrawable.setColor(Color.parseColor("#AA444444"));
         bgDrawable.setCornerRadius(48f);
+        bgDrawable.setStroke(3, Color.CYAN);
 
         LinearLayout innerLayout = new LinearLayout(this);
         innerLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -64,15 +67,16 @@ public class MainActivity extends AppCompatActivity {
         innerParams.gravity = Gravity.CENTER;
         innerLayout.setLayoutParams(innerParams);
 
+
         // SeekBar
         seekBar = new SeekBar(this);
         seekBar.setMax(100);
         seekBar.setProgress(50);
         // keep your custom SeekBar drawable if present
-        // seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
+         seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
         seekBar.getThumb().setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(
-                600,
+                550,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
@@ -122,6 +126,7 @@ public class MainActivity extends AppCompatActivity {
         outerLayout.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
+
         outerLayout.addView(innerLayout);
 
         setContentView(outerLayout);

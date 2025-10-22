@@ -128,7 +128,7 @@ public class DimOverlayService extends Service {
 //                .setContentTitle("DimBar Active")
 //                .setContentText("Tap to adjust or close dimming")
                 .setCustomContentView(notificationLayout)
-                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+//                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
                 .setContentIntent(openAppPending)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
