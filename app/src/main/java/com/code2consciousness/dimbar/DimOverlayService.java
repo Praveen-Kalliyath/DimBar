@@ -213,6 +213,15 @@ public class DimOverlayService extends Service {
     }
 
     @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        // Remove overlay
+        removeOverlay();
+        // Stop the service
+        stopSelf();
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         removeOverlay();
