@@ -120,7 +120,7 @@ public class DimOverlayService extends Service {
         notificationLayout.setOnClickPendingIntent(R.id.btn_close, stopPending);
         notificationLayout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
         notificationLayout.setInt(R.id.btn_pause, "setColorFilter", Color.GRAY); // Transparent bg
-        notificationLayout.setInt(R.id.btn_close, "setColorFilter", Color.CYAN); // Transparent bg
+        notificationLayout.setInt(R.id.btn_close, "setColorFilter", Color.GRAY); // Transparent bg
 
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
