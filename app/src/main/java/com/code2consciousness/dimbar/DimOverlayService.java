@@ -5,7 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -26,7 +29,7 @@ public class DimOverlayService extends Service {
     private FrameLayout overlayView;
     private float currentDim = 0.5f;
     private boolean isPaused = false;
-
+    private BroadcastReceiver pauseStateReceiver;
     private static final String CHANNEL_ID = "dim_overlay_channel";
 
     public static final String ACTION_PAUSE_STATE_CHANGED = "com.code2consciousness.dimbar.ACTION_PAUSE_STATE_CHANGED";
@@ -39,6 +42,28 @@ public class DimOverlayService extends Service {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+        pauseStateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (ACTION_PAUSE_STATE_CHANGED.equals(intent.getAction())) {
+                    boolean paused = intent.getBooleanExtra(EXTRA_IS_PAUSED, false);
+                    // Update the overlay and notification accordingly
+                    if (paused) {
+                        updateDim(0f);
+                        currentDim = 0f;
+                    } else {
+                        updateDim(0.5f);
+                        currentDim = 0.5f;
+                    }
+                    updateNotification();
+                }
+            }
+        };
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                pauseStateReceiver,
+                new IntentFilter(ACTION_PAUSE_STATE_CHANGED)
+        );
+
     }
 
     @Override
@@ -200,5 +225,9 @@ public class DimOverlayService extends Service {
     public void onDestroy() {
         super.onDestroy();
         removeOverlay();
+        if (pauseStateReceiver != null) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
+        }
+
     }
 }
