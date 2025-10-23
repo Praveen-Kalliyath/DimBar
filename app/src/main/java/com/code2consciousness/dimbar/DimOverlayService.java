@@ -27,17 +27,19 @@ public class DimOverlayService extends Service {
 
     private WindowManager windowManager;
     private FrameLayout overlayView;
-    private float currentDim = 0.5f;
+    static float currentDim = 0.5f;
     private boolean isPaused = false;
     private BroadcastReceiver pauseStateReceiver;
     private static final String CHANNEL_ID = "dim_overlay_channel";
     public static final String ACTION_SEND_CURRENT_DIM = "com.code2consciousness.dimbar.ACTION_SEND_CURRENT_DIM";
-
+    public static final String ACTION_REQUEST_DIM = "com.code2consciousness.dimbar.ACTION_REQUEST_DIM";
     public static final String ACTION_PAUSE_STATE_CHANGED = "com.code2consciousness.dimbar.ACTION_PAUSE_STATE_CHANGED";
     public static final String EXTRA_IS_PAUSED = "is_paused";
 
     @Override
-    public IBinder onBind(Intent intent) { return null; }
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
     @Override
     public void onCreate() {
@@ -107,6 +109,9 @@ public class DimOverlayService extends Service {
                     LocalBroadcastManager.getInstance(this).sendBroadcast(dimIntent);
                     return START_STICKY;
 
+                case "REQUEST_DIM":
+                    notifyDimChange(); // sends currentDim to MainActivity
+                    return START_STICKY;
             }
         }
 

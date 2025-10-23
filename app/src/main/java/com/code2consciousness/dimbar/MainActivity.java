@@ -34,11 +34,11 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver pauseStateReceiver;
     private BroadcastReceiver dimChangeReceiver;
     private boolean isPaused = false;
-    private float lastDim = 0.5f;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         // Disable activity open animation
         overridePendingTransition(0, 0);
 
@@ -71,6 +71,9 @@ public class MainActivity extends AppCompatActivity {
                 550, ViewGroup.LayoutParams.WRAP_CONTENT);
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
+
+        // Initialize SeekBar from service dim value
+        seekBar.setProgress((int)((1 - DimOverlayService.currentDim) * 100));
 
         pauseButton = new ImageButton(this);
         pauseButton.setImageResource(R.drawable.ic_pause);
@@ -119,11 +122,10 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
                 if (!isPaused) {
                     float dimAmount = (100 - progress) / 100f;
-                    lastDim = dimAmount;
+                    DimOverlayService.currentDim = dimAmount; // update service dim value
                     updateOverlay(dimAmount);
                 }
             }
-
             @Override public void onStartTrackingTouch(SeekBar sb) {}
             @Override public void onStopTrackingTouch(SeekBar sb) {}
         });
@@ -172,37 +174,14 @@ public class MainActivity extends AppCompatActivity {
         dimChangeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                float dim = intent.getFloatExtra("dim_amount", lastDim);
-                lastDim = dim;
+                float dim = intent.getFloatExtra("dim_amount", DimOverlayService.currentDim);
+                DimOverlayService.currentDim = dim;
                 seekBar.setProgress((int)((1 - dim) * 100));
                 updateOverlay(dim);
             }
         };
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_DIM_CHANGED"));
-
-        // ✅ Request current dim from service immediately
-        if (isServiceRunning(DimOverlayService.class)) {
-            BroadcastReceiver currentDimReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    float dim = intent.getFloatExtra("dim_amount", lastDim);
-                    lastDim = dim;
-                    seekBar.setProgress((int)((1 - dim) * 100));
-                }
-            };
-            LocalBroadcastManager.getInstance(this)
-                    .registerReceiver(currentDimReceiver, new IntentFilter(DimOverlayService.ACTION_SEND_CURRENT_DIM));
-
-            Intent requestDim = new Intent(this, DimOverlayService.class);
-            requestDim.setAction("REQUEST_CURRENT_DIM");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                startForegroundService(requestDim);
-            else
-                startService(requestDim);
-        } else {
-            updateOverlay(lastDim);
-        }
     }
 
     private void requestOverlayPermission() {
@@ -243,10 +222,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        setIntent(intent); // update the intent
-
-        // Disable transition animation
-        overridePendingTransition(0, 0);
+        setIntent(intent);
+        overridePendingTransition(0, 0); // no animation
+        // ✅ DO NOT reset SeekBar here — it already reflects current value
     }
 
     @Override
