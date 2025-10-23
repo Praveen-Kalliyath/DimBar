@@ -14,6 +14,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageButton;
@@ -36,41 +38,29 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver dimChangeReceiver;
     private boolean isPaused = false;
 
+    private LinearLayout outerLayout;
+    private WindowManager windowManager;
+    private WindowManager.LayoutParams overlayParams;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+        // Notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 5678);
             }
         }
 
-        // Disable activity open animation
+        // Disable activity animation
         overridePendingTransition(0, 0);
 
         // Transparent layout setup
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
 
-        // Add these flags to make layout properly centered
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND,
-                WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-
-        getWindow().setDimAmount(0f);
-
-        // Center the window
-        WindowManager.LayoutParams params = getWindow().getAttributes();
-        params.width = WindowManager.LayoutParams.WRAP_CONTENT;
-        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
-        params.gravity = Gravity.CENTER;
-        getWindow().setAttributes(params);
+        // Window flags removed: floating layout will be managed via WindowManager
 
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setColor(Color.parseColor("#AA444444"));
@@ -78,11 +68,6 @@ public class MainActivity extends AppCompatActivity {
         bgDrawable.setStroke(3, Color.parseColor("#FFC107"));
 
         LinearLayout innerLayout = new LinearLayout(this);
-//        LinearLayout.LayoutParams innerParams = new LinearLayout.LayoutParams(
-//                ViewGroup.LayoutParams.WRAP_CONTENT,
-//                ViewGroup.LayoutParams.WRAP_CONTENT
-//        );
-//        innerLayout.setLayoutParams(innerParams);
         innerLayout.setOrientation(LinearLayout.HORIZONTAL);
         innerLayout.setGravity(Gravity.CENTER);
         innerLayout.setPadding(32, 16, 32, 16);
@@ -96,8 +81,6 @@ public class MainActivity extends AppCompatActivity {
                 550, ViewGroup.LayoutParams.WRAP_CONTENT);
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
-
-        // Initialize SeekBar from service dim value
         seekBar.setProgress((int) ((1 - DimOverlayService.currentDim) * 100));
 
         pauseButton = new ImageButton(this);
@@ -133,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
         innerLayout.addView(splitter);
         innerLayout.addView(stopButton);
 
-        LinearLayout outerLayout = new LinearLayout(this);
+        outerLayout = new LinearLayout(this);
         LinearLayout.LayoutParams outerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -144,7 +127,12 @@ public class MainActivity extends AppCompatActivity {
         outerLayout.setBackgroundColor(Color.TRANSPARENT);
         outerLayout.addView(innerLayout);
 
-        setContentView(outerLayout);
+        // --- Setup floating overlay ---
+        if (!Settings.canDrawOverlays(this)) {
+            requestOverlayPermission();
+        } else {
+            showFloatingLayout();
+        }
 
         // SeekBar listener
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -152,18 +140,16 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
                 if (!isPaused) {
                     float dimAmount = (100 - progress) / 100f;
-                    DimOverlayService.currentDim = dimAmount; // update service dim value
+                    DimOverlayService.currentDim = dimAmount;
                     updateOverlay(dimAmount);
                 }
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar sb) {
-            }
+            public void onStartTrackingTouch(SeekBar sb) {}
 
             @Override
-            public void onStopTrackingTouch(SeekBar sb) {
-            }
+            public void onStopTrackingTouch(SeekBar sb) {}
         });
 
         // Pause button
@@ -177,10 +163,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         stopButton.setOnClickListener(v -> stopOverlay());
-
-        if (!Settings.canDrawOverlays(this)) {
-            requestOverlayPermission();
-        }
 
         // Close app receiver
         closeReceiver = new BroadcastReceiver() {
@@ -218,23 +200,6 @@ public class MainActivity extends AppCompatActivity {
         };
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_DIM_CHANGED"));
-
-        // Start the overlay service immediately if permissions are granted
-        boolean overlayGranted = Settings.canDrawOverlays(this);
-        boolean notifGranted = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notifGranted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
-        }
-
-        if (overlayGranted && notifGranted) {
-            Intent serviceIntent = new Intent(this, DimOverlayService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(serviceIntent);
-            } else {
-                startService(serviceIntent);
-            }
-        }
-
     }
 
     private void requestOverlayPermission() {
@@ -243,6 +208,15 @@ public class MainActivity extends AppCompatActivity {
                 Uri.parse("package:" + getPackageName()));
         startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
     }
+
+    private boolean isServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) return true;
+        }
+        return false;
+    }
+
 
     private void updateOverlay(float dimAmount) {
         Intent intent = new Intent(this, DimOverlayService.class);
@@ -254,7 +228,8 @@ public class MainActivity extends AppCompatActivity {
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 startForegroundService(intent);
-            else startService(intent);
+            else
+                startService(intent);
         }
     }
 
@@ -262,15 +237,60 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, DimOverlayService.class);
         intent.setAction("CLOSE");
         startService(intent);
+
+        // Remove the floating overlay immediately
+        if (windowManager != null && outerLayout.getParent() != null) {
+            windowManager.removeView(outerLayout);
+        }
+
         finish();
     }
 
-    private boolean isServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) return true;
-        }
-        return false;
+    private void showFloatingLayout() {
+        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        overlayParams = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
+                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY :
+                        WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                android.graphics.PixelFormat.TRANSLUCENT
+        );
+        overlayParams.gravity = Gravity.CENTER;
+
+        windowManager.addView(outerLayout, overlayParams);
+
+        // Make movable
+        outerLayout.setOnTouchListener(new View.OnTouchListener() {
+            private int initialX, initialY;
+            private float initialTouchX, initialTouchY;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        initialX = overlayParams.x;
+                        initialY = overlayParams.y;
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        overlayParams.x = initialX + (int) (event.getRawX() - initialTouchX);
+                        overlayParams.y = initialY + (int) (event.getRawY() - initialTouchY);
+                        windowManager.updateViewLayout(outerLayout, overlayParams);
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        // Start the overlay service immediately
+        Intent serviceIntent = new Intent(this, DimOverlayService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            startForegroundService(serviceIntent);
+        else
+            startService(serviceIntent);
     }
 
     @Override
@@ -279,13 +299,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == 5678) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Start the service immediately after notification permission granted
-                Intent serviceIntent = new Intent(this, DimOverlayService.class);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(serviceIntent);
-                } else {
-                    startService(serviceIntent);
-                }
+                showFloatingLayout();
             } else {
                 Toast.makeText(this, "Notification permission is required for DimBar notifications.", Toast.LENGTH_LONG).show();
             }
@@ -296,8 +310,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        overridePendingTransition(0, 0); // no animation
-        // ✅ DO NOT reset SeekBar here — it already reflects current value
+        overridePendingTransition(0, 0);
     }
 
     @Override
@@ -309,5 +322,8 @@ public class MainActivity extends AppCompatActivity {
             LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
         if (dimChangeReceiver != null)
             LocalBroadcastManager.getInstance(this).unregisterReceiver(dimChangeReceiver);
+
+        if (windowManager != null && outerLayout.getParent() != null)
+            windowManager.removeView(outerLayout);
     }
 }
