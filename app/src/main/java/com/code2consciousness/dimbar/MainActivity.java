@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout innerLayout = new LinearLayout(this);
         innerLayout.setOrientation(LinearLayout.HORIZONTAL);
         innerLayout.setGravity(Gravity.CENTER);
-        innerLayout.setPadding(32, 16, 32, 16);
+        innerLayout.setPadding(24, 12, 24, 12);
         innerLayout.setBackground(bgDrawable);
 
         seekBar = new SeekBar(this);
@@ -78,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
         seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
         seekBar.getThumb().setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(
-                550, ViewGroup.LayoutParams.WRAP_CONTENT);
+                500, ViewGroup.LayoutParams.WRAP_CONTENT);
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
         seekBar.setProgress((int) ((1 - DimOverlayService.currentDim) * 100));
@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
         pauseButton.setImageResource(R.drawable.ic_pause);
         pauseButton.setBackgroundColor(Color.TRANSPARENT);
         pauseButton.setColorFilter(Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
-        LinearLayout.LayoutParams pauseParams = new LinearLayout.LayoutParams(100, 180);
+        LinearLayout.LayoutParams pauseParams = new LinearLayout.LayoutParams(90, 90);
         pauseParams.gravity = Gravity.CENTER_VERTICAL;
         pauseParams.leftMargin = 16;
         pauseButton.setLayoutParams(pauseParams);
@@ -96,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
         splitter.setImageResource(android.R.drawable.divider_horizontal_bright);
         splitter.setColorFilter(Color.RED, PorterDuff.Mode.SRC_IN);
         splitter.setBackgroundColor(Color.TRANSPARENT);
-        LinearLayout.LayoutParams splitterParams = new LinearLayout.LayoutParams(32, 80);
+        LinearLayout.LayoutParams splitterParams = new LinearLayout.LayoutParams(24, 60);
         splitterParams.gravity = Gravity.CENTER_VERTICAL;
         splitter.setLayoutParams(splitterParams);
 
@@ -113,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
         stopButton.setColorFilter(Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
         stopButton.setScaleX(1.5f);
         stopButton.setScaleY(1.5f);
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(120, 120);
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(100, 60);
         btnParams.gravity = Gravity.CENTER_VERTICAL;
         btnParams.leftMargin = 32;
         stopButton.setLayoutParams(btnParams);
