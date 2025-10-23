@@ -141,9 +141,10 @@ public class DimOverlayService extends Service {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags |= PendingIntent.FLAG_IMMUTABLE;
 
+        // === Intents ===
         PendingIntent openAppPending = PendingIntent.getActivity(this, 0,
                 new Intent(this, MainActivity.class)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 flags);
 
         PendingIntent pausePending = PendingIntent.getService(this, 1,
@@ -158,16 +159,26 @@ public class DimOverlayService extends Service {
         PendingIntent minusPending = PendingIntent.getService(this, 4,
                 new Intent(this, DimOverlayService.class).setAction("MINUS"), flags);
 
+        // === Notification Layout ===
         RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimbar);
+
         layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
         layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
         layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
         layout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
 
+        // Pause button visuals
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
         layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.GREEN : Color.parseColor("#FFC107"));
         layout.setInt(R.id.btn_close, "setColorFilter", Color.parseColor("#FFC107"));
+
+        // === New: Grey-out + / − buttons ===
+        boolean atMin = currentDim <= 0.0f;
+        boolean atMax = currentDim >= 1.0f;
+
+        layout.setInt(R.id.btn_minus, "setColorFilter", atMax ? Color.LTGRAY : Color.parseColor("#FFC107"));
+        layout.setInt(R.id.btn_plus, "setColorFilter", atMin ? Color.LTGRAY : Color.parseColor("#FFC107"));
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
