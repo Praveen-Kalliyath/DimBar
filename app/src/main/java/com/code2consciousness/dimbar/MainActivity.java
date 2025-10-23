@@ -54,13 +54,13 @@ public class MainActivity extends AppCompatActivity {
 
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setColor(Color.parseColor("#AA444444"));
-        bgDrawable.setCornerRadius(48f);
+        bgDrawable.setCornerRadius(96f);
         bgDrawable.setStroke(3, Color.parseColor("#FFC107"));
 
         LinearLayout innerLayout = new LinearLayout(this);
         innerLayout.setOrientation(LinearLayout.HORIZONTAL);
         innerLayout.setGravity(Gravity.CENTER);
-        innerLayout.setPadding(64, 64, 64, 64);
+        innerLayout.setPadding(32, 16, 32, 16);
         innerLayout.setBackground(bgDrawable);
 
         seekBar = new SeekBar(this);
