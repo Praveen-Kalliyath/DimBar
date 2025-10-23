@@ -100,6 +100,13 @@ public class MainActivity extends AppCompatActivity {
         splitterParams.gravity = Gravity.CENTER_VERTICAL;
         splitter.setLayoutParams(splitterParams);
 
+        ImageButton minimizeButton = new ImageButton(this);
+        minimizeButton.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+        minimizeButton.setBackgroundColor(Color.TRANSPARENT);
+        minimizeButton.setColorFilter(Color.LTGRAY, PorterDuff.Mode.SRC_IN);
+        minimizeButton.setOnClickListener(v -> minimizeOverlay());
+        innerLayout.addView(minimizeButton);
+
         stopButton = new ImageButton(this);
         stopButton.setImageResource(android.R.drawable.ic_lock_power_off);
         stopButton.setBackgroundColor(Color.TRANSPARENT);
@@ -254,14 +261,15 @@ public class MainActivity extends AppCompatActivity {
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY :
                         WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, // allows clicks outside to pass through
                 android.graphics.PixelFormat.TRANSLUCENT
         );
         overlayParams.gravity = Gravity.CENTER;
 
         windowManager.addView(outerLayout, overlayParams);
 
-        // Make movable
+        // Make movable and keep internal UI interactive
         outerLayout.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY;
             private float initialTouchX, initialTouchY;
@@ -270,14 +278,25 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        // Make floating interactive on touch
+                        overlayParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                        windowManager.updateViewLayout(outerLayout, overlayParams);
+
                         initialX = overlayParams.x;
                         initialY = overlayParams.y;
                         initialTouchX = event.getRawX();
                         initialTouchY = event.getRawY();
                         return true;
+
                     case MotionEvent.ACTION_MOVE:
                         overlayParams.x = initialX + (int) (event.getRawX() - initialTouchX);
                         overlayParams.y = initialY + (int) (event.getRawY() - initialTouchY);
+                        windowManager.updateViewLayout(outerLayout, overlayParams);
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        // Optional: revert to click-through outside after moving
+                        overlayParams.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
                         windowManager.updateViewLayout(outerLayout, overlayParams);
                         return true;
                 }
@@ -291,6 +310,13 @@ public class MainActivity extends AppCompatActivity {
             startForegroundService(serviceIntent);
         else
             startService(serviceIntent);
+    }
+
+    private void minimizeOverlay() {
+        if (windowManager != null && outerLayout.getParent() != null) {
+            outerLayout.setVisibility(View.GONE);
+            Toast.makeText(this, "DimBar minimized. Tap the notification to reopen.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -311,6 +337,10 @@ public class MainActivity extends AppCompatActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         overridePendingTransition(0, 0);
+
+        if (outerLayout != null && outerLayout.getVisibility() == View.GONE) {
+            outerLayout.setVisibility(View.VISIBLE);
+        }
     }
 
     @Override
