@@ -44,13 +44,25 @@ public class MainActivity extends AppCompatActivity {
 
         // Transparent layout setup
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+
+        // Add these flags to make layout properly centered
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND,
                 WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+
         getWindow().setDimAmount(0f);
+
+        // Center the window
+        WindowManager.LayoutParams params = getWindow().getAttributes();
+        params.width = WindowManager.LayoutParams.WRAP_CONTENT;
+        params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        params.gravity = Gravity.CENTER;
+        getWindow().setAttributes(params);
 
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setColor(Color.parseColor("#AA444444"));
@@ -58,6 +70,11 @@ public class MainActivity extends AppCompatActivity {
         bgDrawable.setStroke(3, Color.parseColor("#FFC107"));
 
         LinearLayout innerLayout = new LinearLayout(this);
+//        LinearLayout.LayoutParams innerParams = new LinearLayout.LayoutParams(
+//                ViewGroup.LayoutParams.WRAP_CONTENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT
+//        );
+//        innerLayout.setLayoutParams(innerParams);
         innerLayout.setOrientation(LinearLayout.HORIZONTAL);
         innerLayout.setGravity(Gravity.CENTER);
         innerLayout.setPadding(32, 16, 32, 16);
@@ -73,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         seekBar.setLayoutParams(seekParams);
 
         // Initialize SeekBar from service dim value
-        seekBar.setProgress((int)((1 - DimOverlayService.currentDim) * 100));
+        seekBar.setProgress((int) ((1 - DimOverlayService.currentDim) * 100));
 
         pauseButton = new ImageButton(this);
         pauseButton.setImageResource(R.drawable.ic_pause);
@@ -109,6 +126,11 @@ public class MainActivity extends AppCompatActivity {
         innerLayout.addView(stopButton);
 
         LinearLayout outerLayout = new LinearLayout(this);
+        LinearLayout.LayoutParams outerParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        outerLayout.setLayoutParams(outerParams);
         outerLayout.setOrientation(LinearLayout.VERTICAL);
         outerLayout.setGravity(Gravity.CENTER);
         outerLayout.setBackgroundColor(Color.TRANSPARENT);
@@ -126,8 +148,14 @@ public class MainActivity extends AppCompatActivity {
                     updateOverlay(dimAmount);
                 }
             }
-            @Override public void onStartTrackingTouch(SeekBar sb) {}
-            @Override public void onStopTrackingTouch(SeekBar sb) {}
+
+            @Override
+            public void onStartTrackingTouch(SeekBar sb) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar sb) {
+            }
         });
 
         // Pause button
@@ -176,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 float dim = intent.getFloatExtra("dim_amount", DimOverlayService.currentDim);
                 DimOverlayService.currentDim = dim;
-                seekBar.setProgress((int)((1 - dim) * 100));
+                seekBar.setProgress((int) ((1 - dim) * 100));
                 updateOverlay(dim);
             }
         };
@@ -230,8 +258,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (closeReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(closeReceiver);
-        if (pauseStateReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
-        if (dimChangeReceiver != null) LocalBroadcastManager.getInstance(this).unregisterReceiver(dimChangeReceiver);
+        if (closeReceiver != null)
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(closeReceiver);
+        if (pauseStateReceiver != null)
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(pauseStateReceiver);
+        if (dimChangeReceiver != null)
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(dimChangeReceiver);
     }
 }
