@@ -31,6 +31,7 @@ public class DimOverlayService extends Service {
     private boolean isPaused = false;
     private BroadcastReceiver pauseStateReceiver;
     private static final String CHANNEL_ID = "dim_overlay_channel";
+    public static final String ACTION_SEND_CURRENT_DIM = "com.code2consciousness.dimbar.ACTION_SEND_CURRENT_DIM";
 
     public static final String ACTION_PAUSE_STATE_CHANGED = "com.code2consciousness.dimbar.ACTION_PAUSE_STATE_CHANGED";
     public static final String EXTRA_IS_PAUSED = "is_paused";
@@ -58,6 +59,7 @@ public class DimOverlayService extends Service {
                 .registerReceiver(pauseStateReceiver, new IntentFilter(ACTION_PAUSE_STATE_CHANGED));
     }
 
+    // Only the onStartCommand method is updated with new "REQUEST_CURRENT_DIM" action
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && intent.getAction() != null) {
@@ -97,6 +99,14 @@ public class DimOverlayService extends Service {
                     notifyDimChange();
                     updateNotification();
                     return START_STICKY;
+
+                // ✅ NEW: Request current dim
+                case "REQUEST_CURRENT_DIM":
+                    Intent dimIntent = new Intent(ACTION_SEND_CURRENT_DIM);
+                    dimIntent.putExtra("dim_amount", currentDim);
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(dimIntent);
+                    return START_STICKY;
+
             }
         }
 
@@ -142,10 +152,14 @@ public class DimOverlayService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags |= PendingIntent.FLAG_IMMUTABLE;
 
         // === Intents ===
-        PendingIntent openAppPending = PendingIntent.getActivity(this, 0,
+        PendingIntent openAppPending = PendingIntent.getActivity(
+                this,
+                0,
                 new Intent(this, MainActivity.class)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP),
-                flags);
+                        .setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT |
+                        (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_IMMUTABLE : 0)
+        );
 
         PendingIntent pausePending = PendingIntent.getService(this, 1,
                 new Intent(this, DimOverlayService.class).setAction("PAUSE"), flags);

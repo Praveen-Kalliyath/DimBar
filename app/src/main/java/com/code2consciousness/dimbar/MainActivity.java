@@ -39,6 +39,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Disable activity open animation
+        overridePendingTransition(0, 0);
 
         // Transparent layout setup
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
@@ -63,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
 
         seekBar = new SeekBar(this);
         seekBar.setMax(100);
-        seekBar.setProgress(50);
         seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
         seekBar.getThumb().setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(
@@ -127,25 +128,20 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onStopTrackingTouch(SeekBar sb) {}
         });
 
+        // Pause button
         pauseButton.setOnClickListener(v -> {
-            isPaused = !isPaused;
-            pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
-            pauseButton.setColorFilter(isPaused ? Color.LTGRAY : Color.YELLOW, PorterDuff.Mode.SRC_IN);
-
-            float dimAmount = isPaused ? 0f : lastDim;
-            updateOverlay(dimAmount);
-
-            Intent intent = new Intent(DimOverlayService.ACTION_PAUSE_STATE_CHANGED);
-            intent.putExtra(DimOverlayService.EXTRA_IS_PAUSED, isPaused);
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+            Intent pauseIntent = new Intent(this, DimOverlayService.class);
+            pauseIntent.setAction("PAUSE");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                startForegroundService(pauseIntent);
+            else
+                startService(pauseIntent);
         });
 
         stopButton.setOnClickListener(v -> stopOverlay());
 
         if (!Settings.canDrawOverlays(this)) {
             requestOverlayPermission();
-        } else {
-            updateOverlay(seekBar.getProgress() / 100f);
         }
 
         // Close app receiver
@@ -158,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(closeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
 
-        // Receive pause updates from service/notification
+        // Pause state updates
         pauseStateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -172,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(pauseStateReceiver, new IntentFilter(DimOverlayService.ACTION_PAUSE_STATE_CHANGED));
 
-        // Receive dim changes from notification buttons
+        // Dim changes from notification buttons
         dimChangeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -184,6 +180,29 @@ public class MainActivity extends AppCompatActivity {
         };
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_DIM_CHANGED"));
+
+        // ✅ Request current dim from service immediately
+        if (isServiceRunning(DimOverlayService.class)) {
+            BroadcastReceiver currentDimReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    float dim = intent.getFloatExtra("dim_amount", lastDim);
+                    lastDim = dim;
+                    seekBar.setProgress((int)((1 - dim) * 100));
+                }
+            };
+            LocalBroadcastManager.getInstance(this)
+                    .registerReceiver(currentDimReceiver, new IntentFilter(DimOverlayService.ACTION_SEND_CURRENT_DIM));
+
+            Intent requestDim = new Intent(this, DimOverlayService.class);
+            requestDim.setAction("REQUEST_CURRENT_DIM");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                startForegroundService(requestDim);
+            else
+                startService(requestDim);
+        } else {
+            updateOverlay(lastDim);
+        }
     }
 
     private void requestOverlayPermission() {
@@ -219,6 +238,15 @@ public class MainActivity extends AppCompatActivity {
             if (serviceClass.getName().equals(service.service.getClassName())) return true;
         }
         return false;
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent); // update the intent
+
+        // Disable transition animation
+        overridePendingTransition(0, 0);
     }
 
     @Override
