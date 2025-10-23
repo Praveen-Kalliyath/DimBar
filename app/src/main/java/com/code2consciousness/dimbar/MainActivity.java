@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.GradientDrawable;
@@ -210,6 +211,13 @@ public class MainActivity extends AppCompatActivity {
         };
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_DIM_CHANGED"));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 5678);
+            }
+        }
     }
 
     private void requestOverlayPermission() {
@@ -227,7 +235,8 @@ public class MainActivity extends AppCompatActivity {
             intent.setAction("UPDATE_DIM");
             startService(intent);
         } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                startForegroundService(intent);
             else startService(intent);
         }
     }
@@ -245,6 +254,19 @@ public class MainActivity extends AppCompatActivity {
             if (serviceClass.getName().equals(service.service.getClassName())) return true;
         }
         return false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 5678) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted — you can start notifications normally
+            } else {
+                Toast.makeText(this, "Notification permission is required to start DimBar notifications.", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     @Override
