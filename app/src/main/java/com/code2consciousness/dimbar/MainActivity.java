@@ -40,6 +40,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 5678);
+            }
+        }
+
         // Disable activity open animation
         overridePendingTransition(0, 0);
 
@@ -212,12 +219,22 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this)
                 .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_DIM_CHANGED"));
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 5678);
+        // Start the overlay service immediately if permissions are granted
+        boolean overlayGranted = Settings.canDrawOverlays(this);
+        boolean notifGranted = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notifGranted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (overlayGranted && notifGranted) {
+            Intent serviceIntent = new Intent(this, DimOverlayService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
             }
         }
+
     }
 
     private void requestOverlayPermission() {
@@ -262,9 +279,15 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == 5678) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted — you can start notifications normally
+                // Start the service immediately after notification permission granted
+                Intent serviceIntent = new Intent(this, DimOverlayService.class);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent);
+                } else {
+                    startService(serviceIntent);
+                }
             } else {
-                Toast.makeText(this, "Notification permission is required to start DimBar notifications.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Notification permission is required for DimBar notifications.", Toast.LENGTH_LONG).show();
             }
         }
     }
