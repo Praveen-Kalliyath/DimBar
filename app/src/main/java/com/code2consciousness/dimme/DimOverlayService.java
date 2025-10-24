@@ -361,10 +361,11 @@ public class DimOverlayService extends Service {
         floatingControls = new LinearLayout(this);
         floatingControls.setOrientation(LinearLayout.VERTICAL);
         floatingControls.setBackgroundColor(0x00FFFFFF); // transparent container
+        floatingControls.setPadding(0,0,0,0);
 
         LinearLayout inner = new LinearLayout(this);
         inner.setOrientation(LinearLayout.HORIZONTAL);
-        inner.setPadding(24, 12, 24, 12);
+        inner.setPadding(15, 2, 15, 2);
 
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setColor(Color.parseColor("#AA444444"));
