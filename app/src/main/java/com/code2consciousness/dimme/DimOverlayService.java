@@ -121,19 +121,23 @@ public class DimOverlayService extends Service {
                     return START_STICKY;
 
                 case "PLUS":
-                    currentDim -= 0.05f;
-                    if (currentDim < 0f) currentDim = 0f;
-                    updateDim(currentDim);
-                    notifyDimChange();
-                    updateNotification();
+                    if (!isPaused) {
+                        currentDim -= 0.05f;
+                        if (currentDim < 0f) currentDim = 0f;
+                        updateDim(currentDim);
+                        notifyDimChange();
+                        updateNotification();
+                    }
                     return START_STICKY;
 
                 case "MINUS":
-                    currentDim += 0.05f;
-                    if (currentDim > 1f) currentDim = 1f;
-                    updateDim(currentDim);
-                    notifyDimChange();
-                    updateNotification();
+                    if (!isPaused) {
+                        updateDim(currentDim);
+                        currentDim += 0.05f;
+                        if (currentDim > 1f) currentDim = 1f;
+                        notifyDimChange();
+                        updateNotification();
+                    }
                     return START_STICKY;
 
                 case "REQUEST_CURRENT_DIM":
@@ -297,7 +301,8 @@ public class DimOverlayService extends Service {
         if (windowManager != null && dimOverlayView != null) {
             try {
                 windowManager.removeView(dimOverlayView);
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+            }
             dimOverlayView = null;
         }
     }
@@ -338,7 +343,8 @@ public class DimOverlayService extends Service {
         try {
             seekBar.setProgressDrawable(getResources().getDrawable(R.drawable.custom_seekbar));
             seekBar.getThumb().setColorFilter(Color.YELLOW, PorterDuff.Mode.SRC_IN);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         LinearLayout.LayoutParams seekParams = new LinearLayout.LayoutParams(500, WindowManager.LayoutParams.WRAP_CONTENT);
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
@@ -418,10 +424,12 @@ public class DimOverlayService extends Service {
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar sb) {}
+            public void onStartTrackingTouch(SeekBar sb) {
+            }
 
             @Override
-            public void onStopTrackingTouch(SeekBar sb) {}
+            public void onStopTrackingTouch(SeekBar sb) {
+            }
         });
 
         // Pause / Play toggle
@@ -459,7 +467,10 @@ public class DimOverlayService extends Service {
                     case MotionEvent.ACTION_DOWN:
                         // Make interactive
                         floatingParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-                        try { windowManager.updateViewLayout(floatingControls, floatingParams); } catch (Exception ignored) {}
+                        try {
+                            windowManager.updateViewLayout(floatingControls, floatingParams);
+                        } catch (Exception ignored) {
+                        }
                         initialX = floatingParams.x;
                         initialY = floatingParams.y;
                         initialTouchX = event.getRawX();
@@ -469,13 +480,19 @@ public class DimOverlayService extends Service {
                     case MotionEvent.ACTION_MOVE:
                         floatingParams.x = initialX + (int) (event.getRawX() - initialTouchX);
                         floatingParams.y = initialY + (int) (event.getRawY() - initialTouchY);
-                        try { windowManager.updateViewLayout(floatingControls, floatingParams); } catch (Exception ignored) {}
+                        try {
+                            windowManager.updateViewLayout(floatingControls, floatingParams);
+                        } catch (Exception ignored) {
+                        }
                         return true;
 
                     case MotionEvent.ACTION_UP:
                         // revert
                         floatingParams.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-                        try { windowManager.updateViewLayout(floatingControls, floatingParams); } catch (Exception ignored) {}
+                        try {
+                            windowManager.updateViewLayout(floatingControls, floatingParams);
+                        } catch (Exception ignored) {
+                        }
                         return true;
                 }
                 return false;
@@ -505,7 +522,8 @@ public class DimOverlayService extends Service {
         if (windowManager != null && floatingControls != null) {
             try {
                 windowManager.removeView(floatingControls);
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+            }
             floatingControls = null;
         }
     }
