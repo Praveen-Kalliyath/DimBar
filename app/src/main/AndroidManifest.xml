@@ -1,45 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    package="com.code2consciousness.dimme">
 
     <!-- Foreground service permissions -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!-- Overlay permission -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
-    <!-- Optional: improves compatibility with Android 14+ when targeting API 34 -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
     <application
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="DimMe"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DimMe">
 
+        <!-- Launcher: NoDisplay activity -->
         <activity
-            android:name=".MainActivity"
+            android:name=".LauncherActivity"
             android:exported="true"
-            android:launchMode="singleTask"
-            android:taskAffinity=""
-            android:excludeFromRecents="true"
-            android:theme="@style/Theme.AppCompat.Translucent.NoActionBar">
-
-            <!-- Launcher intent filter so Android knows this is the default activity -->
+            android:theme="@android:style/Theme.NoDisplay">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
+        <!-- Keep your MainActivity (optional). It is NOT launcher anymore.
+             Use it for debug / permission UI if you like. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.AppCompat.Translucent.NoActionBar" />
 
         <!-- Dim overlay foreground service -->
         <service
@@ -51,6 +47,4 @@
                 android:value="screen_dimming_overlay" />
         </service>
     </application>
-
-
 </manifest>
