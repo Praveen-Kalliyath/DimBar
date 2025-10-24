@@ -350,6 +350,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        Intent intent = new Intent(this, DimOverlayService.class);
+        intent.setAction("APP_VISIBLE");
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         if (closeReceiver != null)

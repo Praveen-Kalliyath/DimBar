@@ -55,6 +55,12 @@ public class DimOverlayService extends Service {
     // Internal service actions
     private static final String ACTION_SHOW_FLOATING = "SHOW_FLOATING";
 
+    private boolean isAppVisible = false;
+
+    public void setAppVisible(boolean visible) {
+        isAppVisible = visible;
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -63,7 +69,18 @@ public class DimOverlayService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+
         createNotificationChannel();
+
+        LocalBroadcastManager.getInstance(this).registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("APP_VISIBLE".equals(intent.getAction())) {
+                    isAppVisible = true;
+                    removeFloatingControls(); // hide service floating UI if app is in foreground
+                }
+            }
+        }, new IntentFilter("APP_VISIBLE"));
 
         pauseStateReceiver = new BroadcastReceiver() {
             @Override
@@ -85,6 +102,9 @@ public class DimOverlayService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Always start as foreground first
+        if (!isAppVisible) {
+            showFloatingControls();
+        }
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                 startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
@@ -151,14 +171,11 @@ public class DimOverlayService extends Service {
                     return START_STICKY;
 
                 case ACTION_SHOW_FLOATING:
-                    // Ensure floating controls are visible / created
                     if (!Settings.canDrawOverlays(this)) {
-                        // If overlay permission missing, try to open settings via a toast hint.
-                        // We can't start Settings activity from Service easily; the LauncherActivity will handle permission on cold start.
                         Toast.makeText(this, "Overlay permission required. Open the app to grant permission.", Toast.LENGTH_SHORT).show();
                         return START_STICKY;
                     }
-                    showFloatingControls(); // shows or recreates
+                    if (!isAppVisible) showFloatingControls();
                     return START_STICKY;
             }
         }
@@ -171,7 +188,7 @@ public class DimOverlayService extends Service {
 
         new android.os.Handler(getMainLooper()).postDelayed(() -> {
             if (!isPaused) showDimOverlay(currentDim);
-            showFloatingControls();
+            if (!isAppVisible) showFloatingControls();
         }, 500); // half-second delay
 
         return START_STICKY;
@@ -228,13 +245,31 @@ public class DimOverlayService extends Service {
         PendingIntent minusPending = PendingIntent.getService(this, 4,
                 new Intent(this, DimOverlayService.class).setAction("MINUS"), flags);
 
+        PendingIntent openFloatingPending = PendingIntent.getService(
+                this,
+                0,
+                new Intent(this, DimOverlayService.class).setAction(ACTION_SHOW_FLOATING),
+                flags
+        );
+
+        Intent openAppIntent = new Intent(this, MainActivity.class);
+        openAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent openAppPending = PendingIntent.getActivity(
+                this,
+                0,
+                openAppIntent,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ?
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE :
+                        PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
         RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimme);
 
         layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
         layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
         layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
-        layout.setOnClickPendingIntent(R.id.icon_dimme, openServicePending);
+        layout.setOnClickPendingIntent(R.id.icon_dimme, openAppPending);
 
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
         layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.GREEN : Color.parseColor("#FFC107"));
@@ -415,10 +450,10 @@ public class DimOverlayService extends Service {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                float dimAmount = (100 - progress) / 100f;
+                currentDim = dimAmount;  // always update
                 if (!isPaused) {
-                    float dimAmount = (100 - progress) / 100f;
-                    currentDim = dimAmount;
-                    updateDim(dimAmount);
+                    updateDim(dimAmount); // only apply overlay if not paused
                     updateNotification();
                 }
             }
