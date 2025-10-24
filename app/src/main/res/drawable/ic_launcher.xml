@@ -41,16 +41,17 @@
     <!-- Sun (right) -->
     <path
         android:fillColor="#FFD600"
-        android:pathData="M72,36a8,8 0 1,1 -16,0a8,8 0 1,1 16,0" />
+        android:pathData="M68,22a8,8 0 1,1 -16,0a8,8 0 1,1 16,0" />
+
+    <!-- Glow shifted top-left -->
+    <path
+        android:fillColor="#FFFF8D"
+        android:fillAlpha="0.3"
+        android:pathData="M68,26a14,14 0 1,1 -28,0a14,14 0 1,1 28,0" />
 
     <!-- Moon (left) -->
     <path
         android:fillColor="#B0B0B0"
-        android:pathData="M32,29a8,8 0 1,0 8,8a6,6 0 1,1 -8,-8z" />
+        android:pathData="M34,28a12,12 0 1,0 12,12a9,9 0 1,1 -12,-12z" />
 
-    <!-- Glow for sun -->
-    <path
-        android:fillColor="#FFFF8D"
-        android:fillAlpha="0.3"
-        android:pathData="M72,36a14,14 0 1,1 -28,0a14,14 0 1,1 28,0" />
 </vector>
