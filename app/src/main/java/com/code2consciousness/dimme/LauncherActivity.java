@@ -1,45 +1,47 @@
 package com.code2consciousness.dimme;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 
-/**
- * Tiny NoDisplay launcher which only starts the DimOverlayService (foreground) and immediately finishes.
- * If overlay permission is missing, forward to MainActivity (which can request permission) or to system settings.
- */
-public class LauncherActivity extends AppCompatActivity {
+public class LauncherActivity extends Activity {
+
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // If overlay permission not granted, open permission flow via Settings (or start MainActivity to request)
+        // 1️⃣ Overlay permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            // launch your MainActivity to show permission request flow if you have it there.
-            // If you prefer to send users straight to system settings:
-            Intent perm = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Intent overlayIntent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName()));
-            perm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(perm);
-            // finish quickly; user will return to launcher and can tap app again once permission is granted
-            finish();
+            startActivity(overlayIntent);
+            finish(); // finish immediately
             return;
         }
 
-        // Start the service (foreground) — service will manage overlays
-        Intent svc = new Intent(this, DimOverlayService.class);
-        // Starting the service without an action will start foreground and dim overlay
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(svc);
-        } else {
-            startService(svc);
+        // 2️⃣ Notification permission (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            int notifPermission = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS);
+            if (notifPermission != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Intent notifIntent = new Intent(this, NotificationPermissionActivity.class);
+                startActivity(notifIntent);
+                finish(); // finish immediately
+                return;
+            }
         }
 
-        // Finish immediately — No UI shown
+        // 3️⃣ Start overlay service
+        Intent svcIntent = new Intent(this, DimOverlayService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(svcIntent);
+        } else {
+            startService(svcIntent);
+        }
+
+        // 4️⃣ Close launcher activity
         finish();
     }
 }

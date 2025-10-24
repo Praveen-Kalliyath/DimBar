@@ -18,7 +18,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DimMe">
 
-        <!-- Launcher: NoDisplay activity -->
         <activity
             android:name=".LauncherActivity"
             android:exported="true"
@@ -29,15 +28,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Keep your MainActivity (optional). It is NOT launcher anymore.
-             Use it for debug / permission UI if you like. -->
+        <activity
+            android:name=".NotificationPermissionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/Theme.AppCompat.Translucent.NoActionBar" />
 
-        <!-- Dim overlay foreground service -->
         <service
             android:name=".DimOverlayService"
             android:exported="false"
@@ -46,5 +47,7 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="screen_dimming_overlay" />
         </service>
+
     </application>
+
 </manifest>
