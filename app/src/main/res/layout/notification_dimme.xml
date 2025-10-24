@@ -13,7 +13,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_launcher"/>
+        android:src="@drawable/ic_dimme"/>
 
     <!-- Minus button -->
     <ImageView

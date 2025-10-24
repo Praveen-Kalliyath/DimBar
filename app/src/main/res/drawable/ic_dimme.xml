@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+
+    <!-- Background circle -->
+    <path
+        android:name="backgroundCircle"
+        android:fillColor="#22223B"
+        android:pathData="M128,8a120,120 0 1,0 0,240a120,120 0 1,0 0,-240" />
+
+    <!-- Dimmed bar base (smaller, inside circle) -->
+    <path
+        android:name="dimBarBase"
+        android:fillColor="#4A4E69"
+        android:pathData="M56,160 h144 a12,12 0 0 1 12,12 v6 a12,12 0 0 1 -12,12 h-144 a12,12 0 0 1 -12,-12 v-6 a12,12 0 0 1 12,-12 z" />
+
+    <!-- Dimmed bar fill -->
+    <path
+        android:name="dimBarFill"
+        android:fillColor="#FFD600"
+        android:pathData="M56,160 h72 a12,12 0 0 1 12,12 v6 a12,12 0 0 1 -12,12 h-72 a12,12 0 0 1 -12,-12 v-6 a12,12 0 0 1 12,-12 z" />
+
+    <!-- Sun -->
+    <path
+        android:name="sun"
+        android:fillColor="#FFD600"
+        android:pathData="M192,96a24,24 0 1,1 -48,0a24,24 0 1,1 48,0" />
+
+    <!-- Sun glow (reduced) -->
+    <path
+        android:name="sunGlow"
+        android:fillColor="#FFFF8D"
+        android:fillAlpha="0.3"
+        android:pathData="M192,96a36,36 0 1,1 -72,0a36,36 0 1,1 72,0" />
+
+    <!-- Moon (bigger and shifted right) -->
+    <path
+        android:name="moon"
+        android:fillColor="#B0B0B0"
+        android:fillAlpha="0.7"
+        android:pathData="M72,80a28,28 0 1,0 28,28a20,20 0 1,1 -28,-28z" />
+
+</vector>
