@@ -1,4 +1,4 @@
-package com.code2consciousness.dimbar;
+package com.code2consciousness.dimme;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -31,9 +31,9 @@ public class DimOverlayService extends Service {
     private boolean isPaused = false;
     private BroadcastReceiver pauseStateReceiver;
     private static final String CHANNEL_ID = "dim_overlay_channel";
-    public static final String ACTION_SEND_CURRENT_DIM = "com.code2consciousness.dimbar.ACTION_SEND_CURRENT_DIM";
-    public static final String ACTION_REQUEST_DIM = "com.code2consciousness.dimbar.ACTION_REQUEST_DIM";
-    public static final String ACTION_PAUSE_STATE_CHANGED = "com.code2consciousness.dimbar.ACTION_PAUSE_STATE_CHANGED";
+    public static final String ACTION_SEND_CURRENT_DIM = "com.code2consciousness.dimme.ACTION_SEND_CURRENT_DIM";
+    public static final String ACTION_REQUEST_DIM = "com.code2consciousness.dimme.ACTION_REQUEST_DIM";
+    public static final String ACTION_PAUSE_STATE_CHANGED = "com.code2consciousness.dimme.ACTION_PAUSE_STATE_CHANGED";
     public static final String EXTRA_IS_PAUSED = "is_paused";
 
     @Override
@@ -70,7 +70,7 @@ public class DimOverlayService extends Service {
                     removeOverlay();
                     stopSelf();
                     LocalBroadcastManager.getInstance(this)
-                            .sendBroadcast(new Intent("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
+                            .sendBroadcast(new Intent("com.code2consciousness.dimme.ACTION_CLOSE_APP"));
                     return START_NOT_STICKY;
 
                 case "PAUSE":
@@ -126,7 +126,7 @@ public class DimOverlayService extends Service {
     }
 
     private void notifyDimChange() {
-        Intent intent = new Intent("com.code2consciousness.dimbar.ACTION_DIM_CHANGED");
+        Intent intent = new Intent("com.code2consciousness.dimme.ACTION_DIM_CHANGED");
         intent.putExtra("dim_amount", currentDim);
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -136,7 +136,7 @@ public class DimOverlayService extends Service {
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null && manager.getNotificationChannel(CHANNEL_ID) == null) {
                 NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                        "DimBar Overlay", NotificationManager.IMPORTANCE_LOW);
+                        "DimMe Overlay", NotificationManager.IMPORTANCE_LOW);
                 channel.setShowBadge(false);
                 manager.createNotificationChannel(channel);
             }
@@ -179,13 +179,13 @@ public class DimOverlayService extends Service {
                 new Intent(this, DimOverlayService.class).setAction("MINUS"), flags);
 
         // === Notification Layout ===
-        RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimbar);
+        RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimme);
 
         layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
         layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
         layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
-        layout.setOnClickPendingIntent(R.id.icon_dimbar, openAppPending);
+        layout.setOnClickPendingIntent(R.id.icon_dimme, openAppPending);
 
         // Pause button visuals
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);

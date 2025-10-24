@@ -1,4 +1,4 @@
-package com.code2consciousness.dimbar;
+package com.code2consciousness.dimme;
 
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
@@ -179,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         LocalBroadcastManager.getInstance(this)
-                .registerReceiver(closeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_CLOSE_APP"));
+                .registerReceiver(closeReceiver, new IntentFilter("com.code2consciousness.dimme.ACTION_CLOSE_APP"));
 
         // Pause state updates
         pauseStateReceiver = new BroadcastReceiver() {
@@ -206,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         LocalBroadcastManager.getInstance(this)
-                .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimbar.ACTION_DIM_CHANGED"));
+                .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimme.ACTION_DIM_CHANGED"));
     }
 
     private void requestOverlayPermission() {
@@ -315,7 +315,7 @@ public class MainActivity extends AppCompatActivity {
     private void minimizeOverlay() {
         if (windowManager != null && outerLayout.getParent() != null) {
             outerLayout.setVisibility(View.GONE);
-            Toast.makeText(this, "DimBar minimized. Tap the notification to reopen.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "DimMe minimized. Tap the notification to reopen.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -327,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 showFloatingLayout();
             } else {
-                Toast.makeText(this, "Notification permission is required for DimBar notifications.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Notification permission is required for DimMe notifications.", Toast.LENGTH_LONG).show();
             }
         }
     }

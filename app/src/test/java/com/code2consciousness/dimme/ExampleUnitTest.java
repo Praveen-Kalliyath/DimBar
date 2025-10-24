@@ -1,4 +1,4 @@
-package com.code2consciousness.dimbar;
+package com.code2consciousness.dimme;
 
 import org.junit.Test;
 

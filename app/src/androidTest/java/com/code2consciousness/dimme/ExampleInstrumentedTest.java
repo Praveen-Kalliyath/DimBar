@@ -1,4 +1,4 @@
-package com.code2consciousness.dimbar;
+package com.code2consciousness.dimme;
 
 import android.content.Context;
 
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
     public void useAppContext() {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("com.code2consciousness.dimbar", appContext.getPackageName());
+        assertEquals("com.code2consciousness.dimme", appContext.getPackageName());
     }
 }

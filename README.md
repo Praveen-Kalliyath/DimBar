@@ -1,5 +1,5 @@
-# DimBar
-DimBar is an Android app that lets you dim your screen your way.
+# DimMe - Dim It Your Way
+DimMe is an Android app that lets you dim your screen your way.
 
 ## Features
 - Customizable screen dimming

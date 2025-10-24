@@ -16,5 +16,5 @@ build/
 .externalNativeBuild
 .cxx
 local.properties
-# DimBar specific ignores
+# DimMe specific ignores
 app/build/
