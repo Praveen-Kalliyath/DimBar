@@ -27,12 +27,19 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.DimMe.Transparent">
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.AppCompat.Translucent.NoActionBar">
+
+            <!-- Launcher intent filter so Android knows this is the default activity -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
+
 
         <!-- Dim overlay foreground service -->
         <service

@@ -313,11 +313,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void minimizeOverlay() {
-        if (windowManager != null && outerLayout.getParent() != null) {
+        if (outerLayout != null) {
             outerLayout.setVisibility(View.GONE);
-            Toast.makeText(this, "DimMe minimized. Tap the notification to reopen.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "DimMe minimized. Tap the notification or app icon to reopen.", Toast.LENGTH_SHORT).show();
         }
     }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -336,10 +337,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        overridePendingTransition(0, 0);
 
-        if (outerLayout != null && outerLayout.getVisibility() == View.GONE) {
+        // Bring overlay back or recreate if necessary
+        if (outerLayout != null) {
             outerLayout.setVisibility(View.VISIBLE);
+            if (outerLayout.getParent() == null && windowManager != null) {
+                windowManager.addView(outerLayout, overlayParams);
+            }
+        } else {
+            showFloatingLayout();
         }
     }
 
