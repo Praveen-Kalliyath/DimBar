@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId "com.code2consciousness.dimme"
-        minSdk 34
+        minSdk 23 // Changed to support Android 6.0 and above
         targetSdk 34
         versionCode 1
         versionName "1.0"

@@ -17,9 +17,12 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -106,10 +109,13 @@ public class DimOverlayService extends Service {
             showFloatingControls();
         }
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-            else
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE);
+            } else {
                 startForeground(1, createNotification());
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -307,7 +313,9 @@ public class DimOverlayService extends Service {
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                    : WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE |
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
@@ -316,18 +324,47 @@ public class DimOverlayService extends Service {
                 PixelFormat.TRANSLUCENT
         );
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
 
-        params.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            params.flags |= WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS |
+                          WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+
+            dimOverlayView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            );
+
+            windowManager.addView(dimOverlayView, params);
+
+            // Post the system UI flags update to ensure it takes effect
+            dimOverlayView.post(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    final WindowInsetsController insetsController = dimOverlayView.getWindowInsetsController();
+                    if (insetsController != null) {
+                        insetsController.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                        insetsController.hide(WindowInsets.Type.systemBars());
+                    }
+                }
+            });
+        } else {
+            params.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+
+            windowManager.addView(dimOverlayView, params);
+        }
 
         params.gravity = Gravity.TOP | Gravity.START;
-        windowManager.addView(dimOverlayView, params);
     }
 
     public void updateDim(float dimAmount) {
@@ -430,17 +467,26 @@ public class DimOverlayService extends Service {
         floatingParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
-                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY :
-                        WindowManager.LayoutParams.TYPE_PHONE,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                    : WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
                         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT
         );
-        floatingParams.gravity = Gravity.CENTER;
-        // initial position (center)
-        floatingParams.x = 0;
-        floatingParams.y = 0;
+
+        // Handle display metrics for different screen sizes
+        WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics metrics = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(metrics);
+
+        // Adjust seekbar width based on screen width
+        int seekBarWidth = Math.min(500, (int)(metrics.widthPixels * 0.7));
+        if (seekBar != null) {
+            LinearLayout.LayoutParams adjustedSeekParams = (LinearLayout.LayoutParams) seekBar.getLayoutParams();
+            adjustedSeekParams.width = seekBarWidth;
+            seekBar.setLayoutParams(adjustedSeekParams);
+        }
 
         // Add to window
         try {
