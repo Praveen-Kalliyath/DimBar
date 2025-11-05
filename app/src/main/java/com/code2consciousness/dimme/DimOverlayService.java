@@ -147,16 +147,19 @@ public class DimOverlayService extends Service {
                         updateDim(currentDim);
                         notifyDimChange();
                         updateNotification();
+                        updateFloatingSeekBar();
                     }
                     return START_STICKY;
 
                 case "MINUS":
                     if (!isPaused) {
-                        updateDim(currentDim);
                         currentDim += 0.05f;
                         if (currentDim > 1f) currentDim = 1f;
+
+                        updateDim(currentDim);
                         notifyDimChange();
                         updateNotification();
+                        updateFloatingSeekBar();
                     }
                     return START_STICKY;
 
@@ -269,7 +272,7 @@ public class DimOverlayService extends Service {
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
         layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
         layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
-        layout.setOnClickPendingIntent(R.id.icon_dimme, openAppPending);
+        layout.setOnClickPendingIntent(R.id.icon_dimme, openServicePending);
 
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
         layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.GREEN : Color.parseColor("#FFC107"));
@@ -549,6 +552,22 @@ public class DimOverlayService extends Service {
                     ImageButton pb = (ImageButton) pauseView;
                     pb.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
                     pb.setColorFilter(isPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
+                }
+            }
+        }
+    }
+
+    private void updateFloatingSeekBar() {
+        if (floatingControls == null) return;
+        View inner = floatingControls.getChildAt(0);
+        if (inner instanceof LinearLayout) {
+            LinearLayout row = (LinearLayout) inner;
+            // we know structure: minimize (0), seekBar (1), pause (2), splitter, stop
+            if (row.getChildCount() >= 2) {
+                View seekBarView = row.getChildAt(1);
+                if (seekBarView instanceof SeekBar) {
+                    SeekBar sb = (SeekBar) seekBarView;
+                    sb.setProgress((int) ((1 - currentDim) * 100));
                 }
             }
         }

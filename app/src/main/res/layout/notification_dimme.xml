@@ -1,34 +1,42 @@
-<LinearLayout android:layout_width="match_parent"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notification_root"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:padding="8dp"
     android:background="@android:color/transparent"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="4dp">
 
+    <!-- DimMe Icon -->
     <ImageView
         android:id="@+id/icon_dimme"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_dimme"/>
+        android:src="@drawable/ic_dimme" />
 
     <!-- Minus button -->
     <ImageView
         android:id="@+id/btn_minus"
-        android:layout_width="50dp"
+        android:layout_width="0dp"
         android:layout_height="40dp"
+        android:layout_marginStart="2dp"
+        android:layout_marginEnd="2dp"
+        android:layout_weight="1"
         android:scaleType="centerInside"
         android:src="@drawable/ic_minus" />
 
     <!-- Plus button -->
     <ImageView
         android:id="@+id/btn_plus"
-        android:layout_width="50dp"
+        android:layout_width="0dp"
         android:layout_height="40dp"
-        android:layout_marginStart="4dp"
+        android:layout_marginStart="2dp"
+        android:layout_marginEnd="6dp"
+        android:layout_weight="1"
         android:scaleType="centerInside"
         android:src="@drawable/ic_plus" />
 
@@ -44,18 +52,22 @@
     <!-- Pause / Play button -->
     <ImageView
         android:id="@+id/btn_pause"
-        android:layout_width="50dp"
+        android:layout_width="0dp"
         android:layout_height="40dp"
         android:layout_marginStart="4dp"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
         android:scaleType="centerInside"
         android:src="@drawable/ic_pause" />
-
 
     <!-- Stop / Close button -->
     <ImageView
         android:id="@+id/btn_close"
-        android:layout_width="50dp"
+        android:layout_width="0dp"
         android:layout_height="40dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="4dp"
+        android:layout_weight="1"
         android:scaleType="centerInside"
         android:src="@drawable/ic_power" />
 
