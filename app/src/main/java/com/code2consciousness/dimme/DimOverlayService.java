@@ -30,11 +30,17 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Toast;
 import android.widget.RemoteViews;
+import android.util.Log;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
 
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class DimOverlayService extends Service {
+
+    private static final String TAG = "DimOverlayService";
 
     private WindowManager windowManager;
     private FrameLayout dimOverlayView;
@@ -42,6 +48,12 @@ public class DimOverlayService extends Service {
     // Floating controls (moved from MainActivity)
     private LinearLayout floatingControls;
     private WindowManager.LayoutParams floatingParams;
+    // Generated ids for child views so we can find them reliably across OEMs
+    private final int floatingSeekBarId = View.generateViewId();
+    private final int floatingPauseButtonId = View.generateViewId();
+    // Direct references to floating child views for robust updates
+    private SeekBar floatingSeekBar;
+    private ImageButton floatingPauseButton;
 
     static float currentDim = 0.5f;
     private boolean isPaused = false;
@@ -104,6 +116,19 @@ public class DimOverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // On Android 13+ we must have POST_NOTIFICATIONS runtime permission to show notifications.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                // Launch an Activity that will request the permission from the user
+                Intent permIntent = new Intent(this, NotificationPermissionActivity.class);
+                permIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                startActivity(permIntent);
+                Log.i(TAG, "Notification permission missing — launched NotificationPermissionActivity and stopping service until permission is granted.");
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+        }
+
         // Always start as foreground first
         if (!isAppVisible) {
             showFloatingControls();
@@ -117,7 +142,7 @@ public class DimOverlayService extends Service {
                 startForeground(1, createNotification());
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "startForeground failed", e);
         }
 
         // Make sure the notification is pushed/updated immediately so action buttons render
@@ -219,10 +244,13 @@ public class DimOverlayService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null && manager.getNotificationChannel(CHANNEL_ID) == null) {
-                // Use DEFAULT importance so actions/buttons show reliably in the collapsed view
+                // Use HIGH importance so the foreground notification is visible in the panel
                 NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                        "DimMe Overlay", NotificationManager.IMPORTANCE_DEFAULT);
+                        "DimMe Overlay", NotificationManager.IMPORTANCE_HIGH);
+                channel.setDescription("DimMe: screen dimming overlay (tap to open)");
                 channel.setShowBadge(false);
+                // Make sure the notification is visible on the lock screen
+                channel.setLockscreenVisibility(NotificationCompat.VISIBILITY_PUBLIC);
                 manager.createNotificationChannel(channel);
             }
         }
@@ -275,6 +303,7 @@ public class DimOverlayService extends Service {
         RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimme);
 
         layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
+        // btn_close is now a container (icon + label) so hook the click to the container id
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
         layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
         layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
@@ -282,6 +311,7 @@ public class DimOverlayService extends Service {
 
         layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
         layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.GREEN : Color.parseColor("#FFC107"));
+        // color the close icon/view
         layout.setInt(R.id.btn_close, "setColorFilter", Color.parseColor("#FFC107"));
 
         boolean atMin = currentDim <= 0.0f;
@@ -293,21 +323,20 @@ public class DimOverlayService extends Service {
         // Build notification with DecoratedCustomViewStyle and explicit actions so buttons show immediately
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
+                .setContentTitle("DimMe")
+                .setContentText("Screen dimming active")
                 .setCustomContentView(layout)
-                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
-                // Open the app when tapping the notification (activity intent)
-//                .setContentIntent(openAppPending)
+                // don't set DecoratedCustomViewStyle (prevents expand affordance)
+                // and provide a normal content title/text as a reliable fallback
+//                .setContentIntent(openServicePending)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
-        // Add actions so they appear in the collapsed notification view immediately
-        int pauseIcon = isPaused ? android.R.drawable.ic_media_play : android.R.drawable.ic_media_pause;
-        builder.addAction(new NotificationCompat.Action(pauseIcon, isPaused ? "Resume" : "Pause", pausePending));
-        builder.addAction(new NotificationCompat.Action(android.R.drawable.ic_input_add, "Dim+", plusPending));
-        builder.addAction(new NotificationCompat.Action(android.R.drawable.ic_menu_revert, "Dim-", minusPending));
-        builder.addAction(new NotificationCompat.Action(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPending));
+        // Removed explicit actions: adding actions makes the notification show an expand affordance.
+        // We rely on the RemoteViews click handlers (setOnClickPendingIntent) instead so the
+        // collapsed notification displays only our custom content up to the close button.
 
         return builder.build();
     }
@@ -436,6 +465,9 @@ public class DimOverlayService extends Service {
         seekParams.gravity = Gravity.CENTER_VERTICAL;
         seekBar.setLayoutParams(seekParams);
         seekBar.setProgress((int) ((1 - currentDim) * 100));
+        seekBar.setId(floatingSeekBarId); // Set generated ID
+        // keep reference for robust updates
+        floatingSeekBar = seekBar;
 
         ImageButton pauseButton = new ImageButton(this);
         pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
@@ -444,6 +476,9 @@ public class DimOverlayService extends Service {
         LinearLayout.LayoutParams pauseParams = new LinearLayout.LayoutParams(90, 90);
         pauseParams.leftMargin = 16;
         pauseButton.setLayoutParams(pauseParams);
+        pauseButton.setId(floatingPauseButtonId); // Set generated ID
+        // keep reference for robust updates
+        floatingPauseButton = pauseButton;
 
         ImageButton splitter = new ImageButton(this);
         splitter.setImageResource(android.R.drawable.divider_horizontal_bright);
@@ -503,8 +538,7 @@ public class DimOverlayService extends Service {
         try {
             windowManager.addView(floatingControls, floatingParams);
         } catch (Exception e) {
-            // guard
-            e.printStackTrace();
+            Log.e(TAG, "addView floatingControls failed", e);
         }
 
         // SeekBar listener
@@ -533,8 +567,10 @@ public class DimOverlayService extends Service {
             // toggle via service action to keep consistent
             Intent pauseIntent = new Intent(this, DimOverlayService.class).setAction("PAUSE");
             startService(pauseIntent);
-            // update icon locally immediately
-            pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+            // update icon locally immediately to the expected new state (do not change service state here)
+            boolean expectedPaused = !isPaused;
+            pauseButton.setImageResource(expectedPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+            pauseButton.setColorFilter(expectedPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
         });
 
         // Stop overlay
@@ -589,56 +625,92 @@ public class DimOverlayService extends Service {
                             windowManager.updateViewLayout(floatingControls, floatingParams);
                         } catch (Exception ignored) {
                         }
+                        // Accessibility: dispatch a click so performClick is handled
+                        v.performClick();
                         return true;
                 }
                 return false;
             }
         });
+        // make it clickable for accessibility
+        floatingControls.setClickable(true);
+        Log.d(TAG, "Floating controls created and added");
     }
 
     private void updateFloatingPauseState() {
         if (floatingControls == null) return;
-        // Update pause icon/color inside floatingControls if present
-        View inner = floatingControls.getChildAt(0);
-        if (inner instanceof LinearLayout) {
-            LinearLayout row = (LinearLayout) inner;
-            // we know structure: minimize (0), seekBar (1), pause (2), splitter, stop
-            if (row.getChildCount() >= 3) {
-                View pauseView = row.getChildAt(2);
-                if (pauseView instanceof ImageButton) {
-                    ImageButton pb = (ImageButton) pauseView;
-                    pb.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
-                    pb.setColorFilter(isPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
-                }
-            }
-        }
-    }
-
-    private void updateFloatingSeekBar() {
-        if (floatingControls == null) return;
-        View inner = floatingControls.getChildAt(0);
-        if (inner instanceof LinearLayout) {
-            LinearLayout row = (LinearLayout) inner;
-            // we know structure: minimize (0), seekBar (1), pause (2), splitter, stop
-            if (row.getChildCount() >= 2) {
-                View seekBarView = row.getChildAt(1);
-                if (seekBarView instanceof SeekBar) {
-                    SeekBar sb = (SeekBar) seekBarView;
-                    sb.setProgress((int) ((1 - currentDim) * 100));
-                }
-            }
-        }
-    }
-
-    private void removeFloatingControls() {
-        if (windowManager != null && floatingControls != null) {
+        // Use generated id to find the pause ImageButton reliably and run on main thread
+        new android.os.Handler(getMainLooper()).post(() -> {
             try {
-                windowManager.removeView(floatingControls);
-            } catch (IllegalArgumentException ignored) {
+                ImageButton pb = floatingPauseButton != null ? floatingPauseButton : (ImageButton) floatingControls.findViewById(floatingPauseButtonId);
+                if (pb != null) {
+                    Log.d(TAG, "Updating pause button state: isPaused=" + isPaused);
+                     pb.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+                     pb.setColorFilter(isPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
+                     pb.invalidate();
+                 }
+             } catch (Exception ignored) {
+             }
+         });
+     }
+
+     private void updateFloatingSeekBar() {
+         updateFloatingSeekBar(3);
+     }
+
+    // Retry-aware updater: attempts tries with small delays to handle OEM redraw/attach delays
+    private void updateFloatingSeekBar(int attempts) {
+        if (attempts <= 0) return;
+        if (floatingControls == null) return;
+
+        new android.os.Handler(getMainLooper()).post(() -> {
+            try {
+                SeekBar sb = floatingSeekBar != null ? floatingSeekBar : (SeekBar) floatingControls.findViewById(floatingSeekBarId);
+                if (sb != null) {
+                   int progress = (int) ((1 - currentDim) * 100);
+                    Log.d(TAG, "Setting floating seekbar progress to " + progress + " (currentDim=" + currentDim + ") attempts="+  attempts);
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            sb.setProgress(progress, false);
+                        }
+                    } catch (NoSuchMethodError ignored) {
+                        sb.setProgress(progress);
+                    }
+                    sb.postInvalidateOnAnimation();
+                    sb.refreshDrawableState();
+                    try {
+                        if (windowManager != null && floatingControls.getParent() != null) {
+                            floatingControls.requestLayout();
+                            windowManager.updateViewLayout(floatingControls, floatingParams);
+                        }
+                    } catch (Exception ex) {
+                        Log.d(TAG, "updateViewLayout failed while refreshing seekbar", ex);
+                    }
+                } else {
+                    Log.d(TAG, "floating seekbar instance is null when updating (attempts=" + attempts + ")");
+                    if (attempts > 1) {
+                        new android.os.Handler(getMainLooper()).postDelayed(() -> updateFloatingSeekBar(attempts - 1), 120);
+                    }
+                }
+            } catch (Exception ex) {
+                Log.d(TAG, "Exception in updateFloatingSeekBar", ex);
+                if (attempts > 1) new android.os.Handler(getMainLooper()).postDelayed(() -> updateFloatingSeekBar(attempts - 1), 120);
             }
-            floatingControls = null;
-        }
+        });
     }
+
+     private void removeFloatingControls() {
+         if (windowManager != null && floatingControls != null) {
+             try {
+                 windowManager.removeView(floatingControls);
+             } catch (IllegalArgumentException ignored) {
+             }
+             floatingControls = null;
+             floatingSeekBar = null;
+             floatingPauseButton = null;
+            Log.d(TAG, "Floating controls removed and references cleared");
+         }
+     }
 
     private void sendPauseBroadcast(boolean paused) {
         Intent intent = new Intent(ACTION_PAUSE_STATE_CHANGED);
