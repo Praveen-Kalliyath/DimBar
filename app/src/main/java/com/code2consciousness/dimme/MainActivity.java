@@ -30,6 +30,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_OVERLAY_PERMISSION = 1234;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 5678;
     private SeekBar seekBar;
     private ImageButton stopButton;
     private ImageButton pauseButton;
@@ -46,22 +47,20 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Notification permission for Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 5678);
-            }
-        }
-
         // Disable activity animation
         overridePendingTransition(0, 0);
 
         // Transparent layout setup
         getWindow().setBackgroundDrawableResource(android.R.color.transparent);
 
-        // Window flags removed: floating layout will be managed via WindowManager
+        // Initialize UI components
+        initializeUI();
 
+        // Check and request permissions
+        checkAndRequestPermissions();
+    }
+
+    private void initializeUI() {
         GradientDrawable bgDrawable = new GradientDrawable();
         bgDrawable.setColor(Color.parseColor("#AA444444"));
         bgDrawable.setCornerRadius(96f);
@@ -133,124 +132,64 @@ public class MainActivity extends AppCompatActivity {
         outerLayout.setGravity(Gravity.CENTER);
         outerLayout.setBackgroundColor(Color.TRANSPARENT);
         outerLayout.addView(innerLayout);
+    }
 
-        // --- Setup floating overlay ---
-        if (!Settings.canDrawOverlays(this)) {
-            requestOverlayPermission();
+    private void checkAndRequestPermissions() {
+        boolean needsOverlay = !Settings.canDrawOverlays(this);
+        boolean needsNotification = false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            needsNotification = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (needsOverlay) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
+        } else if (needsNotification && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                    REQUEST_NOTIFICATION_PERMISSION);
         } else {
             showFloatingLayout();
         }
+    }
 
-        // SeekBar listener
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
-                if (!isPaused) {
-                    float dimAmount = (100 - progress) / 100f;
-                    DimOverlayService.currentDim = dimAmount;
-                    updateOverlay(dimAmount);
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_OVERLAY_PERMISSION) {
+            if (Settings.canDrawOverlays(this)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                                REQUEST_NOTIFICATION_PERMISSION);
+                        return;
+                    }
                 }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar sb) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar sb) {}
-        });
-
-        // Pause button
-        pauseButton.setOnClickListener(v -> {
-            Intent pauseIntent = new Intent(this, DimOverlayService.class);
-            pauseIntent.setAction("PAUSE");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                startForegroundService(pauseIntent);
-            else
-                startService(pauseIntent);
-        });
-
-        stopButton.setOnClickListener(v -> stopOverlay());
-
-        // Close app receiver
-        closeReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
+                showFloatingLayout();
+            } else {
+                Toast.makeText(this, "Overlay permission is required", Toast.LENGTH_SHORT).show();
                 finish();
             }
-        };
-        LocalBroadcastManager.getInstance(this)
-                .registerReceiver(closeReceiver, new IntentFilter("com.code2consciousness.dimme.ACTION_CLOSE_APP"));
+        }
+    }
 
-        // Pause state updates
-        pauseStateReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (DimOverlayService.ACTION_PAUSE_STATE_CHANGED.equals(intent.getAction())) {
-                    isPaused = intent.getBooleanExtra(DimOverlayService.EXTRA_IS_PAUSED, false);
-                    pauseButton.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
-                    pauseButton.setColorFilter(isPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (Settings.canDrawOverlays(this)) {
+                    showFloatingLayout();
                 }
+            } else {
+                Toast.makeText(this, "Notification permission is required for service reliability",
+                        Toast.LENGTH_SHORT).show();
+                finish();
             }
-        };
-        LocalBroadcastManager.getInstance(this)
-                .registerReceiver(pauseStateReceiver, new IntentFilter(DimOverlayService.ACTION_PAUSE_STATE_CHANGED));
-
-        // Dim changes from notification buttons
-        dimChangeReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                float dim = intent.getFloatExtra("dim_amount", DimOverlayService.currentDim);
-                DimOverlayService.currentDim = dim;
-                seekBar.setProgress((int) ((1 - dim) * 100));
-                updateOverlay(dim);
-            }
-        };
-        LocalBroadcastManager.getInstance(this)
-                .registerReceiver(dimChangeReceiver, new IntentFilter("com.code2consciousness.dimme.ACTION_DIM_CHANGED"));
-    }
-
-    private void requestOverlayPermission() {
-        Toast.makeText(this, "Please grant permission to draw over other apps", Toast.LENGTH_LONG).show();
-        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:" + getPackageName()));
-        startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
-    }
-
-    private boolean isServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) return true;
         }
-        return false;
-    }
-
-
-    private void updateOverlay(float dimAmount) {
-        Intent intent = new Intent(this, DimOverlayService.class);
-        intent.putExtra("dim_amount", dimAmount);
-
-        if (isServiceRunning(DimOverlayService.class)) {
-            intent.setAction("UPDATE_DIM");
-            startService(intent);
-        } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                startForegroundService(intent);
-            else
-                startService(intent);
-        }
-    }
-
-    private void stopOverlay() {
-        Intent intent = new Intent(this, DimOverlayService.class);
-        intent.setAction("CLOSE");
-        startService(intent);
-
-        // Remove the floating overlay immediately
-        if (windowManager != null && outerLayout.getParent() != null) {
-            windowManager.removeView(outerLayout);
-        }
-
-        finish();
     }
 
     private void showFloatingLayout() {
@@ -316,20 +255,6 @@ public class MainActivity extends AppCompatActivity {
         if (outerLayout != null) {
             outerLayout.setVisibility(View.GONE);
             Toast.makeText(this, "DimMe minimized. Tap the notification or app icon to reopen.", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == 5678) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                showFloatingLayout();
-            } else {
-                Toast.makeText(this, "Notification permission is required for DimMe notifications.", Toast.LENGTH_LONG).show();
-            }
         }
     }
 
