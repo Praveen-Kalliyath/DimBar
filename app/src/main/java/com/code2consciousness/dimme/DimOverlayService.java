@@ -309,7 +309,44 @@ public class DimOverlayService extends Service {
         layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
         layout.setOnClickPendingIntent(R.id.icon_dimme, openServicePending);
 
-        layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+        // NOTE: RemoteViews.setImageViewResource will not reliably load vector drawables
+        // on all devices because the system process inflates the RemoteViews without
+        // AppCompat vector support. Render the drawable to a Bitmap and use
+        // setImageViewBitmap to ensure the icon updates correctly.
+        try {
+            android.graphics.drawable.Drawable d = ContextCompat.getDrawable(this, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+            if (d != null) {
+                // Tint the drawable before drawing so RemoteViews shows the expected color.
+                int tintColor = isPaused ? Color.GREEN : Color.parseColor("#FFC107");
+                try {
+                    android.graphics.drawable.Drawable wrapped = androidx.core.graphics.drawable.DrawableCompat.wrap(d).mutate();
+                    androidx.core.graphics.drawable.DrawableCompat.setTint(wrapped, tintColor);
+                    d = wrapped;
+                } catch (Throwable ignored) {
+                }
+
+                android.graphics.Bitmap bmp;
+                if (d instanceof android.graphics.drawable.BitmapDrawable) {
+                    bmp = ((android.graphics.drawable.BitmapDrawable) d).getBitmap();
+                } else {
+                    int w = d.getIntrinsicWidth() > 0 ? d.getIntrinsicWidth() : 48;
+                    int h = d.getIntrinsicHeight() > 0 ? d.getIntrinsicHeight() : 48;
+                    bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+                    android.graphics.Canvas canvas = new android.graphics.Canvas(bmp);
+                    d.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                    d.draw(canvas);
+                }
+                layout.setImageViewBitmap(R.id.btn_pause, bmp);
+            } else {
+                // fallback to resource if drawable lookup failed for any reason
+                layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+            }
+        } catch (Exception ex) {
+            // last-resort fallback
+            layout.setImageViewResource(R.id.btn_pause, isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+        }
+        // Attempt to color the pause icon; keep this as an additional hint but the bitmap above
+        // already contains the drawable color. Some OEMs may ignore setInt on RemoteViews.
         layout.setInt(R.id.btn_pause, "setColorFilter", isPaused ? Color.GREEN : Color.parseColor("#FFC107"));
         // color the close icon/view
         layout.setInt(R.id.btn_close, "setColorFilter", Color.parseColor("#FFC107"));
