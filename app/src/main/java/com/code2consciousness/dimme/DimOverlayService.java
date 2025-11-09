@@ -120,6 +120,9 @@ public class DimOverlayService extends Service {
             e.printStackTrace();
         }
 
+        // Make sure the notification is pushed/updated immediately so action buttons render
+        updateNotification();
+
         String action = intent != null ? intent.getAction() : null;
 
         if (action != null) {
@@ -195,6 +198,9 @@ public class DimOverlayService extends Service {
         else
             startForeground(1, createNotification());
 
+        // Refresh the notification right after starting foreground to encourage immediate rendering of actions
+        updateNotification();
+
         new android.os.Handler(getMainLooper()).postDelayed(() -> {
             if (!isPaused) showDimOverlay(currentDim);
             if (!isAppVisible) showFloatingControls();
@@ -213,8 +219,9 @@ public class DimOverlayService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null && manager.getNotificationChannel(CHANNEL_ID) == null) {
+                // Use DEFAULT importance so actions/buttons show reliably in the collapsed view
                 NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                        "DimMe Overlay", NotificationManager.IMPORTANCE_LOW);
+                        "DimMe Overlay", NotificationManager.IMPORTANCE_DEFAULT);
                 channel.setShowBadge(false);
                 manager.createNotificationChannel(channel);
             }
@@ -234,7 +241,7 @@ public class DimOverlayService extends Service {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) flags |= PendingIntent.FLAG_IMMUTABLE;
 
-        // Changed: tapping notification will send intent to the service to SHOW_FLOATING
+        // Changed: tapping notification will open the main app activity (safer/best-practice)
         PendingIntent openServicePending = PendingIntent.getService(
                 this,
                 0,
@@ -253,13 +260,6 @@ public class DimOverlayService extends Service {
 
         PendingIntent minusPending = PendingIntent.getService(this, 4,
                 new Intent(this, DimOverlayService.class).setAction("MINUS"), flags);
-
-        PendingIntent openFloatingPending = PendingIntent.getService(
-                this,
-                0,
-                new Intent(this, DimOverlayService.class).setAction(ACTION_SHOW_FLOATING),
-                flags
-        );
 
         Intent openAppIntent = new Intent(this, MainActivity.class);
         openAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -290,15 +290,26 @@ public class DimOverlayService extends Service {
         layout.setInt(R.id.btn_minus, "setColorFilter", atMax ? Color.LTGRAY : Color.parseColor("#FFC107"));
         layout.setInt(R.id.btn_plus, "setColorFilter", atMin ? Color.LTGRAY : Color.parseColor("#FFC107"));
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
+        // Build notification with DecoratedCustomViewStyle and explicit actions so buttons show immediately
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
                 .setCustomContentView(layout)
-                .setContentIntent(openServicePending)
+                .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
+                // Open the app when tapping the notification (activity intent)
+//                .setContentIntent(openAppPending)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .build();
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+
+        // Add actions so they appear in the collapsed notification view immediately
+        int pauseIcon = isPaused ? android.R.drawable.ic_media_play : android.R.drawable.ic_media_pause;
+        builder.addAction(new NotificationCompat.Action(pauseIcon, isPaused ? "Resume" : "Pause", pausePending));
+        builder.addAction(new NotificationCompat.Action(android.R.drawable.ic_input_add, "Dim+", plusPending));
+        builder.addAction(new NotificationCompat.Action(android.R.drawable.ic_menu_revert, "Dim-", minusPending));
+        builder.addAction(new NotificationCompat.Action(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPending));
+
+        return builder.build();
     }
 
     // --- DIM OVERLAY (fullscreen) ---
