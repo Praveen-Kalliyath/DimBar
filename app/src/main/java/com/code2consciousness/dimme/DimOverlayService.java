@@ -114,6 +114,26 @@ public class DimOverlayService extends Service {
                 .registerReceiver(pauseStateReceiver, new IntentFilter(ACTION_PAUSE_STATE_CHANGED));
     }
 
+    private void setPauseState(boolean paused) {
+        isPaused = paused;
+        // Update dim overlay
+        float dimAmount = isPaused ? 0f : currentDim;
+        updateDim(dimAmount);
+
+        // Update notification on main thread
+        new android.os.Handler(getMainLooper()).post(() -> {
+            updateNotification();
+        });
+
+        // Update floating controls on main thread
+        new android.os.Handler(getMainLooper()).post(() -> {
+            updateFloatingPauseState();
+        });
+
+        // Broadcast state change
+        sendPauseBroadcast(isPaused);
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // On Android 13+ we must have POST_NOTIFICATIONS runtime permission to show notifications.
@@ -303,10 +323,12 @@ public class DimOverlayService extends Service {
         RemoteViews layout = new RemoteViews(getPackageName(), R.layout.notification_dimme);
 
         layout.setOnClickPendingIntent(R.id.btn_pause, pausePending);
-        // btn_close is now a container (icon + label) so hook the click to the container id
         layout.setOnClickPendingIntent(R.id.btn_close, stopPending);
-        layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
-        layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
+        // Only enable plus/minus buttons when not paused
+        if (!isPaused) {
+            layout.setOnClickPendingIntent(R.id.btn_plus, plusPending);
+            layout.setOnClickPendingIntent(R.id.btn_minus, minusPending);
+        }
         layout.setOnClickPendingIntent(R.id.icon_dimme, openServicePending);
 
         // NOTE: RemoteViews.setImageViewResource will not reliably load vector drawables
@@ -354,8 +376,11 @@ public class DimOverlayService extends Service {
         boolean atMin = currentDim <= 0.0f;
         boolean atMax = currentDim >= 1.0f;
 
-        layout.setInt(R.id.btn_minus, "setColorFilter", atMax ? Color.LTGRAY : Color.parseColor("#FFC107"));
-        layout.setInt(R.id.btn_plus, "setColorFilter", atMin ? Color.LTGRAY : Color.parseColor("#FFC107"));
+        // Set button colors - gray out when paused or at limits
+        layout.setInt(R.id.btn_minus, "setColorFilter",
+            (isPaused || atMax) ? Color.LTGRAY : Color.parseColor("#FFC107"));
+        layout.setInt(R.id.btn_plus, "setColorFilter",
+            (isPaused || atMin) ? Color.LTGRAY : Color.parseColor("#FFC107"));
 
         // Build notification with DecoratedCustomViewStyle and explicit actions so buttons show immediately
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -679,17 +704,56 @@ public class DimOverlayService extends Service {
         // Use generated id to find the pause ImageButton reliably and run on main thread
         new android.os.Handler(getMainLooper()).post(() -> {
             try {
+                // Update pause button
                 ImageButton pb = floatingPauseButton != null ? floatingPauseButton : (ImageButton) floatingControls.findViewById(floatingPauseButtonId);
                 if (pb != null) {
                     Log.d(TAG, "Updating pause button state: isPaused=" + isPaused);
-                     pb.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
-                     pb.setColorFilter(isPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
-                     pb.invalidate();
-                 }
-             } catch (Exception ignored) {
-             }
-         });
-     }
+                    pb.setImageResource(isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+                    pb.setColorFilter(isPaused ? Color.GREEN : Color.parseColor("#FFC107"), PorterDuff.Mode.SRC_IN);
+                    pb.invalidate();
+                }
+
+                // Find and update plus/minus buttons
+                boolean atMin = currentDim <= 0.0f;
+                boolean atMax = currentDim >= 1.0f;
+
+                // Update all buttons in the layout
+                for (int i = 0; i < floatingControls.getChildCount(); i++) {
+                    View child = floatingControls.getChildAt(i);
+                    if (child instanceof LinearLayout) {
+                        LinearLayout inner = (LinearLayout) child;
+                        for (int j = 0; j < inner.getChildCount(); j++) {
+                            View innerChild = inner.getChildAt(j);
+                            if (innerChild instanceof ImageButton) {
+                                ImageButton btn = (ImageButton) innerChild;
+                                // Check button type by its image resource
+                                if (btn.getDrawable() != null) {
+                                    if (btn.getDrawable().getConstantState().equals(
+                                            getResources().getDrawable(android.R.drawable.ic_input_add).getConstantState())) {
+                                        // Plus button
+                                        btn.setEnabled(!isPaused);
+                                        btn.setColorFilter(
+                                            (isPaused || atMin) ? Color.LTGRAY : Color.parseColor("#FFC107"),
+                                            PorterDuff.Mode.SRC_IN
+                                        );
+                                    } else if (btn.getDrawable().getConstantState().equals(
+                                            getResources().getDrawable(android.R.drawable.ic_input_delete).getConstantState())) {
+                                        // Minus button
+                                        btn.setEnabled(!isPaused);
+                                        btn.setColorFilter(
+                                            (isPaused || atMax) ? Color.LTGRAY : Color.parseColor("#FFC107"),
+                                            PorterDuff.Mode.SRC_IN
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        });
+    }
 
      private void updateFloatingSeekBar() {
          updateFloatingSeekBar(3);
